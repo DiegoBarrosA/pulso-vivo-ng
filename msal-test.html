@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSAL Configuration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .status-good { color: #28a745; }
+        .status-bad { color: #dc3545; }
+        .status-warning { color: #ffc107; }
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+        .config-label {
+            font-weight: 600;
+            color: #666;
+        }
+        .config-value {
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .azure-link {
+            display: inline-block;
+            background: #0078d4;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        .error-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px;
+        }
+        .log-error { color: #dc3545; }
+        .log-success { color: #28a745; }
+        .log-info { color: #17a2b8; }
+        .tokens-section {
+            margin-top: 20px;
+        }
+        .token-display {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .token-preview {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 8px;
+            word-break: break-all;
+            margin: 5px 0;
+        }
+        .token-json {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75em;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 5px 0;
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.85em;
+            margin: 2px;
+        }
+        .no-tokens {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 MSAL Configuration Test & Debug Tool</h1>
+        
+        <div class="section">
+            <h2>📊 Configuration Status</h2>
+            <div id="status-grid">
+                <div class="config-item">
+                    <span class="config-label">Configuration Valid:</span>
+                    <span id="config-valid" class="config-value">Checking...</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">MSAL Loaded:</span>
+                    <span id="msal-loaded" class="config-value">Checking...</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Azure AD Reachable:</span>
+                    <span id="azure-reachable" class="config-value">Checking...</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Redirect URI Match:</span>
+                    <span id="redirect-match" class="config-value">Checking...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⚙️ Current Configuration</h2>
+            <div id="config-details"></div>
+        </div>
+
+        <div class="section">
+            <h2>🛠️ Actions</h2>
+            <button class="btn" onclick="testConnection()">🌐 Test Azure AD Connection</button>
+            <button class="btn" onclick="validateConfig()">✅ Validate Configuration</button>
+            <button class="btn" onclick="testMSAL()">🔐 Test MSAL Login</button>
+            <button class="btn btn-danger" onclick="clearCache()">🗑️ Clear Cache</button>
+        </div>
+
+        <div class="section">
+            <h2>🌐 Azure Portal Quick Links</h2>
+            <div id="azure-links"></div>
+        </div>
+
+        <div class="section">
+            <h2>🎫 JWT Tokens</h2>
+            <button class="btn" onclick="toggleTokens()">👁️ Show/Hide Tokens</button>
+            <button class="btn" onclick="refreshTokens()">🔄 Refresh Tokens</button>
+            <div id="tokens-container" class="tokens-section" style="display: none;">
+                <div id="access-token-section" class="token-display" style="display: none;">
+                    <h3>🔑 Access Token</h3>
+                    <button class="btn btn-small" onclick="copyToken('access', 'raw')">📋 Copy Raw JWT</button>
+                    <button class="btn btn-small" onclick="copyToken('access', 'decoded')">📋 Copy Decoded</button>
+                    <h4>Raw JWT (First 100 chars):</h4>
+                    <div id="access-token-preview" class="token-preview"></div>
+                    <h4>Decoded Payload:</h4>
+                    <pre id="access-token-decoded" class="token-json"></pre>
+                </div>
+                <div id="id-token-section" class="token-display" style="display: none;">
+                    <h3>🆔 ID Token</h3>
+                    <button class="btn btn-small" onclick="copyToken('id', 'raw')">📋 Copy Raw JWT</button>
+                    <button class="btn btn-small" onclick="copyToken('id', 'decoded')">📋 Copy Decoded</button>
+                    <h4>Raw JWT (First 100 chars):</h4>
+                    <div id="id-token-preview" class="token-preview"></div>
+                    <h4>Decoded Payload:</h4>
+                    <pre id="id-token-decoded" class="token-json"></pre>
+                </div>
+                <div id="no-tokens" class="no-tokens">
+                    No tokens available. Please login first using the "Test MSAL Login" button.
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Debug Log</h2>
+            <div id="debug-log" class="error-log"></div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 Common Solutions for 400 Bad Request</h2>
+            <ol>
+                <li><strong>Configure as SPA:</strong> In Azure Portal → App Registration → Authentication → Remove "Web" platform → Add "Single-page application"</li>
+                <li><strong>Register Redirect URI:</strong> Add your current origin (<span id="current-origin"></span>) to the SPA platform</li>
+                <li><strong>Verify Client ID:</strong> Ensure the Client ID matches your Azure AD app registration</li>
+                <li><strong>Check Tenant ID:</strong> Verify the Tenant ID in the authority URL is correct</li>
+                <li><strong>Wait for Propagation:</strong> Azure AD changes can take 2-5 minutes to propagate</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="https://alcdn.msauth.net/browser/4.13.2/js/msal-browser.min.js"></script>
+    <script>
+        // Configuration from your Angular environment
+        const config = {
+            clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81",
+            authority: "https://login.microsoftonline.com/82c6cf20-e689-4aa9-bedf-7acaf7c4ead7",
+            redirectUri: window.location.origin,
+            postLogoutRedirectUri: window.location.origin,
+            scopes: ["user.read"],
+            clientCapabilities: ["CP1"]
+        };
+
+        let msalInstance;
+        let currentTokens = {
+            accessToken: null,
+            idToken: null,
+            accessTokenDecoded: null,
+            idTokenDecoded: null
+        };
+        const debugLog = document.getElementById('debug-log');
+        let tokensVisible = false;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            debugLog.appendChild(logEntry);
+            debugLog.scrollTop = debugLog.scrollHeight;
+            
+            // Also log to console
+            console.log(`[MSAL Test] ${message}`);
+        }
+
+        function initializePage() {
+            // Set current origin
+            document.getElementById('current-origin').textContent = window.location.origin;
+            
+            // Display configuration
+            displayConfiguration();
+            
+            // Generate Azure Portal links
+            generateAzureLinks();
+            
+            // Initialize MSAL
+            initializeMSAL();
+            
+            // Run initial checks
+            setTimeout(runInitialChecks, 1000);
+        }
+
+        function displayConfiguration() {
+            const configDetails = document.getElementById('config-details');
+            const items = [
+                ['Client ID', config.clientId],
+                ['Authority', config.authority],
+                ['Redirect URI', config.redirectUri],
+                ['Scopes', JSON.stringify(config.scopes)],
+                ['Client Capabilities', JSON.stringify(config.clientCapabilities)],
+                ['Current URL', window.location.href],
+                ['Current Origin', window.location.origin]
+            ];
+
+            configDetails.innerHTML = items.map(([label, value]) => `
+                <div class="config-item">
+                    <span class="config-label">${label}:</span>
+                    <span class="config-value">${value}</span>
+                </div>
+            `).join('');
+        }
+
+        function generateAzureLinks() {
+            const azureLinks = document.getElementById('azure-links');
+            const links = [
+                ['📱 App Registration', `https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/${config.clientId}`],
+                ['🔐 Authentication Settings', `https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/${config.clientId}`],
+                ['🔑 API Permissions', `https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/${config.clientId}`],
+                ['📋 All App Registrations', 'https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps']
+            ];
+
+            azureLinks.innerHTML = links.map(([text, url]) => 
+                `<a href="${url}" target="_blank" class="azure-link">${text}</a>`
+            ).join('');
+        }
+
+        function initializeMSAL() {
+            try {
+                msalInstance = new msal.PublicClientApplication({
+                    auth: {
+                        clientId: config.clientId,
+                        authority: config.authority,
+                        redirectUri: config.redirectUri,
+                        postLogoutRedirectUri: config.postLogoutRedirectUri,
+                        navigateToLoginRequestUrl: false,
+                        clientCapabilities: config.clientCapabilities
+                    },
+                    cache: {
+                        cacheLocation: "localStorage",
+                        storeAuthStateInCookie: false
+                    },
+                    system: {
+                        loggerOptions: {
+                            loggerCallback: (level, message, containsPii) => {
+                                if (!containsPii) {
+                                    log(`MSAL: ${message}`, 'info');
+                                }
+                            },
+                            piiLoggingEnabled: false,
+                            logLevel: msal.LogLevel.Info
+                        }
+                    }
+                });
+
+                msalInstance.initialize().then(() => {
+                    log('MSAL initialized successfully', 'success');
+                    document.getElementById('msal-loaded').innerHTML = '<span class="status-good">✅ YES</span>';
+                }).catch(error => {
+                    log(`MSAL initialization failed: ${error}`, 'error');
+                    document.getElementById('msal-loaded').innerHTML = '<span class="status-bad">❌ NO</span>';
+                });
+
+            } catch (error) {
+                log(`Failed to create MSAL instance: ${error}`, 'error');
+                document.getElementById('msal-loaded').innerHTML = '<span class="status-bad">❌ NO</span>';
+            }
+        }
+
+        async function runInitialChecks() {
+            // Check redirect URI match
+            const redirectMatch = config.redirectUri === window.location.origin;
+            document.getElementById('redirect-match').innerHTML = redirectMatch ? 
+                '<span class="status-good">✅ YES</span>' : 
+                '<span class="status-bad">❌ NO</span>';
+
+            if (!redirectMatch) {
+                log(`Redirect URI mismatch: Expected ${window.location.origin}, got ${config.redirectUri}`, 'error');
+            }
+
+            // Test Azure AD connectivity
+            await testConnection();
+
+            // Validate overall configuration
+            validateConfig();
+        }
+
+        async function testConnection() {
+            try {
+                log('Testing Azure AD connectivity...', 'info');
+                const response = await fetch(`${config.authority}/.well-known/openid_configuration`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('Azure AD endpoint is reachable', 'success');
+                    document.getElementById('azure-reachable').innerHTML = '<span class="status-good">✅ YES</span>';
+                    log(`Token endpoint: ${data.token_endpoint}`, 'info');
+                } else {
+                    log(`Azure AD endpoint returned: ${response.status} ${response.statusText}`, 'error');
+                    document.getElementById('azure-reachable').innerHTML = '<span class="status-bad">❌ NO</span>';
+                }
+            } catch (error) {
+                log(`Failed to reach Azure AD: ${error}`, 'error');
+                document.getElementById('azure-reachable').innerHTML = '<span class="status-bad">❌ NO</span>';
+            }
+        }
+
+        function validateConfig() {
+            let isValid = true;
+            const errors = [];
+
+            // Validate Client ID format
+            const clientIdRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!clientIdRegex.test(config.clientId)) {
+                errors.push('Client ID format is invalid');
+                isValid = false;
+            }
+
+            // Validate Authority format
+            const authorityRegex = /^https:\/\/login\.microsoftonline\.com\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!authorityRegex.test(config.authority)) {
+                errors.push('Authority format is invalid');
+                isValid = false;
+            }
+
+            // Validate Redirect URI
+            if (config.redirectUri !== window.location.origin) {
+                errors.push('Redirect URI does not match current origin');
+                isValid = false;
+            }
+
+            // Check SPA capabilities
+            if (!config.clientCapabilities.includes('CP1')) {
+                log('Warning: CP1 capability not found (recommended for SPA)', 'warning');
+            }
+
+            document.getElementById('config-valid').innerHTML = isValid ? 
+                '<span class="status-good">✅ YES</span>' : 
+                '<span class="status-bad">❌ NO</span>';
+
+            if (errors.length > 0) {
+                errors.forEach(error => log(error, 'error'));
+            } else {
+                log('Configuration validation passed', 'success');
+            }
+        }
+
+        async function testMSAL() {
+            if (!msalInstance) {
+                log('MSAL instance not available', 'error');
+                return;
+            }
+
+            try {
+                log('Testing MSAL login...', 'info');
+                
+                const loginRequest = {
+                    scopes: config.scopes,
+                    prompt: 'select_account'
+                };
+
+                const response = await msalInstance.loginPopup(loginRequest);
+                log('Login successful!', 'success');
+                log(`User: ${response.account.username}`, 'success');
+                
+                // Test token acquisition
+                const tokenRequest = {
+                    scopes: config.scopes,
+                    account: response.account
+                };
+
+                const tokenResponse = await msalInstance.acquireTokenSilent(tokenRequest);
+                log('Token acquired successfully!', 'success');
+                
+                // Store tokens
+                currentTokens.accessToken = tokenResponse.accessToken;
+                currentTokens.idToken = tokenResponse.idToken;
+                currentTokens.accessTokenDecoded = decodeJWT(tokenResponse.accessToken);
+                if (tokenResponse.idToken) {
+                    currentTokens.idTokenDecoded = decodeJWT(tokenResponse.idToken);
+                }
+                
+                // Update token display if visible
+                if (tokensVisible) {
+                    displayTokens();
+                }
+                
+            } catch (error) {
+                log(`MSAL test failed: ${error}`, 'error');
+                if (error.errorCode) {
+                    log(`Error code: ${error.errorCode}`, 'error');
+                }
+                if (error.errorMessage) {
+                    log(`Error message: ${error.errorMessage}`, 'error');
+                }
+            }
+        }
+
+        async function clearCache() {
+            if (msalInstance) {
+                try {
+                    await msalInstance.clearCache();
+                    log('MSAL cache cleared', 'success');
+                } catch (error) {
+                    log(`Failed to clear MSAL cache: ${error}`, 'error');
+                }
+            }
+
+            // Clear browser storage
+            localStorage.clear();
+            sessionStorage.clear();
+            log('Browser storage cleared', 'success');
+            
+            // Clear current tokens
+            currentTokens = {
+                accessToken: null,
+                idToken: null,
+                accessTokenDecoded: null,
+                idTokenDecoded: null
+            };
+            
+            // Update token display
+            if (tokensVisible) {
+                displayTokens();
+            }
+
+            if (confirm('Cache cleared. Reload page to test again?')) {
+                window.location.reload();
+            }
+        }
+
+        function decodeJWT(token) {
+            try {
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format');
+                }
+
+                const payload = parts[1];
+                const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+                
+                // Add human-readable timestamps
+                if (decoded.exp) {
+                    decoded.exp_readable = new Date(decoded.exp * 1000).toLocaleString();
+                }
+                if (decoded.iat) {
+                    decoded.iat_readable = new Date(decoded.iat * 1000).toLocaleString();
+                }
+                if (decoded.nbf) {
+                    decoded.nbf_readable = new Date(decoded.nbf * 1000).toLocaleString();
+                }
+
+                return decoded;
+            } catch (error) {
+                log(`Error decoding JWT: ${error}`, 'error');
+                return { error: 'Failed to decode JWT' };
+            }
+        }
+
+        function toggleTokens() {
+            tokensVisible = !tokensVisible;
+            const container = document.getElementById('tokens-container');
+            
+            if (tokensVisible) {
+                container.style.display = 'block';
+                refreshTokens();
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        async function refreshTokens() {
+            if (!msalInstance) {
+                log('MSAL instance not available', 'error');
+                return;
+            }
+
+            try {
+                const accounts = msalInstance.getAllAccounts();
+                if (accounts.length === 0) {
+                    log('No accounts available for token refresh', 'warning');
+                    currentTokens = {
+                        accessToken: null,
+                        idToken: null,
+                        accessTokenDecoded: null,
+                        idTokenDecoded: null
+                    };
+                    displayTokens();
+                    return;
+                }
+
+                const tokenRequest = {
+                    scopes: config.scopes,
+                    account: accounts[0],
+                    forceRefresh: false
+                };
+
+                const response = await msalInstance.acquireTokenSilent(tokenRequest);
+                
+                currentTokens.accessToken = response.accessToken;
+                currentTokens.idToken = response.idToken;
+                currentTokens.accessTokenDecoded = decodeJWT(response.accessToken);
+                if (response.idToken) {
+                    currentTokens.idTokenDecoded = decodeJWT(response.idToken);
+                }
+
+                displayTokens();
+                log('Tokens refreshed successfully', 'success');
+                
+            } catch (error) {
+                log(`Failed to refresh tokens: ${error}`, 'error');
+                currentTokens = {
+                    accessToken: null,
+                    idToken: null,
+                    accessTokenDecoded: null,
+                    idTokenDecoded: null
+                };
+                displayTokens();
+            }
+        }
+
+        function displayTokens() {
+            const accessSection = document.getElementById('access-token-section');
+            const idSection = document.getElementById('id-token-section');
+            const noTokens = document.getElementById('no-tokens');
+
+            // Access Token
+            if (currentTokens.accessToken) {
+                accessSection.style.display = 'block';
+                document.getElementById('access-token-preview').textContent = 
+                    currentTokens.accessToken.substring(0, 100) + '...';
+                document.getElementById('access-token-decoded').textContent = 
+                    JSON.stringify(currentTokens.accessTokenDecoded, null, 2);
+            } else {
+                accessSection.style.display = 'none';
+            }
+
+            // ID Token
+            if (currentTokens.idToken) {
+                idSection.style.display = 'block';
+                document.getElementById('id-token-preview').textContent = 
+                    currentTokens.idToken.substring(0, 100) + '...';
+                document.getElementById('id-token-decoded').textContent = 
+                    JSON.stringify(currentTokens.idTokenDecoded, null, 2);
+            } else {
+                idSection.style.display = 'none';
+            }
+
+            // No tokens message
+            if (!currentTokens.accessToken && !currentTokens.idToken) {
+                noTokens.style.display = 'block';
+            } else {
+                noTokens.style.display = 'none';
+            }
+        }
+
+        function copyToken(tokenType, format) {
+            let textToCopy = '';
+            let label = '';
+
+            if (format === 'raw') {
+                if (tokenType === 'access' && currentTokens.accessToken) {
+                    textToCopy = currentTokens.accessToken;
+                    label = 'Access Token (Raw JWT)';
+                } else if (tokenType === 'id' && currentTokens.idToken) {
+                    textToCopy = currentTokens.idToken;
+                    label = 'ID Token (Raw JWT)';
+                }
+            } else if (format === 'decoded') {
+                if (tokenType === 'access' && currentTokens.accessTokenDecoded) {
+                    textToCopy = JSON.stringify(currentTokens.accessTokenDecoded, null, 2);
+                    label = 'Access Token (Decoded)';
+                } else if (tokenType === 'id' && currentTokens.idTokenDecoded) {
+                    textToCopy = JSON.stringify(currentTokens.idTokenDecoded, null, 2);
+                    label = 'ID Token (Decoded)';
+                }
+            }
+
+            if (textToCopy) {
+                copyToClipboard(textToCopy, label);
+            } else {
+                log(`No ${tokenType} token available to copy`, 'warning');
+            }
+        }
+
+        function copyToClipboard(text, label) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    log(`${label} copied to clipboard`, 'success');
+                    alert(`${label} copied to clipboard!`);
+                }).catch(err => {
+                    log(`Failed to copy to clipboard: ${err}`, 'error');
+                    fallbackCopy(text, label);
+                });
+            } else {
+                fallbackCopy(text, label);
+            }
+        }
+
+        function fallbackCopy(text, label) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                log(`${label} copied to clipboard (fallback)`, 'success');
+                alert(`${label} copied to clipboard!`);
+            } catch (err) {
+                log(`Fallback copy failed: ${err}`, 'error');
+                alert('Failed to copy to clipboard. Please copy manually from the console.');
+                console.log(`${label}:`, text);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initializePage);
+    </script>
+</body>
+</html>

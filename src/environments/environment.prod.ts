@@ -1,61 +1,63 @@
 export const environment = {
   production: true,
-  
+
   // Configuración de Azure AD
   azureAd: {
-    clientId: 'your-production-azure-ad-client-id', // Reemplazar con tu Client ID de producción
-    authority: 'https://login.microsoftonline.com/your-production-tenant-id', // Reemplazar con tu Tenant ID de producción
-    redirectUri: 'https://your-production-domain.com',
-    postLogoutRedirectUri: 'https://your-production-domain.com',
-    scopes: ['user.read']
+    clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81", // Reemplazar con tu Client ID
+
+    authority:
+      "https://login.microsoftonline.com/82c6cf20-e689-4aa9-bedf-7acaf7c4ead7", // Reemplazar con tu Tenant ID
+    redirectUri: "https://your-production-domain.com",
+    postLogoutRedirectUri: "https://your-production-domain.com",
+    scopes: ["user.read"],
   },
-  
+
   // Configuración del BFF API
   api: {
-    baseUrl: 'https://your-production-bff-api-domain.com/api', // Reemplazar con la URL de tu BFF de producción
+    baseUrl: "https://your-production-bff-api-domain.com/api", // Reemplazar con la URL de tu BFF de producción
     timeout: 30000, // 30 segundos
     retryAttempts: 3,
-    bffScopes: ['api://your-production-api-client-id/access_as_user'] // Reemplazar con el scope de tu BFF de producción
+    bffScopes: ["api://your-production-api-client-id/access_as_user"], // Reemplazar con el scope de tu BFF de producción
   },
-  
+
   // Configuraciones de la aplicación
   app: {
-    name: 'PulsoVivo',
-    version: '1.0.0',
-    companyName: 'PulsoVivo Medical Supplies',
-    supportEmail: 'soporte@pulsovivo.com',
+    name: "PulsoVivo",
+    version: "1.0.0",
+    companyName: "PulsoVivo Medical Supplies",
+    supportEmail: "soporte@pulsovivo.com",
     enableLogging: false, // Deshabilitado en producción
-    logLevel: 'error' // Solo errores en producción
+    logLevel: "error", // Solo errores en producción
   },
-  
+
   // Configuraciones de la tienda
   store: {
     itemsPerPage: 12,
     enableWishlist: true,
     enableReviews: true,
-    defaultCurrency: 'EUR',
-    currencySymbol: '€',
+    defaultCurrency: "EUR",
+    currencySymbol: "€",
     enableInventoryAlerts: true,
-    lowStockThreshold: 10
+    lowStockThreshold: 10,
   },
-  
+
   // Configuraciones de administración
   admin: {
     autoSaveInterval: 60000, // 1 minuto (más conservador en producción)
-    exportFormats: ['csv', 'excel', 'pdf'],
+    exportFormats: ["csv", "excel", "pdf"],
     enableAuditLog: true,
     sessionTimeout: 1800000, // 30 minutos en producción (más seguro)
-    maxFileUploadSize: 5242880 // 5MB en producción (más restrictivo)
+    maxFileUploadSize: 5242880, // 5MB en producción (más restrictivo)
   },
-  
+
   // URLs de recursos externos
   external: {
-    supportUrl: 'https://support.pulsovivo.com',
-    documentationUrl: 'https://docs.pulsovivo.com',
-    termsUrl: 'https://pulsovivo.com/terminos',
-    privacyUrl: 'https://pulsovivo.com/privacidad'
+    supportUrl: "https://support.pulsovivo.com",
+    documentationUrl: "https://docs.pulsovivo.com",
+    termsUrl: "https://pulsovivo.com/terminos",
+    privacyUrl: "https://pulsovivo.com/privacidad",
   },
-  
+
   // Configuraciones de características
   features: {
     enableReports: true,
@@ -63,6 +65,6 @@ export const environment = {
     enableDarkMode: false,
     enableMultiLanguage: false,
     enableOfflineMode: false,
-    enablePushNotifications: true // Habilitado en producción
-  }
+    enablePushNotifications: true, // Habilitado en producción
+  },
 };

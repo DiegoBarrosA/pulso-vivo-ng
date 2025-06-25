@@ -182,11 +182,11 @@ export class TiendaComponent implements OnInit {
     // Implementar navegación a detalle del producto
   }
 
-  iniciarSesion(): void {
-    this.authService.login();
+  async iniciarSesion(): Promise<void> {
+    await this.authService.login();
   }
 
-  cerrarSesion(): void {
-    this.authService.logout();
+  async cerrarSesion(): Promise<void> {
+    await this.authService.logout();
   }
 }

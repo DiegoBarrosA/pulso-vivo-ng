@@ -18,18 +18,66 @@ export function MSALInstanceFactory(): IPublicClientApplication {
   const platformId = inject(PLATFORM_ID);
   
   if (isPlatformBrowser(platformId)) {
-    return new PublicClientApplication({
-      auth: {
-        clientId: environment.azureAd.clientId,
-        authority: environment.azureAd.authority,
-        redirectUri: environment.azureAd.redirectUri,
-        postLogoutRedirectUri: environment.azureAd.postLogoutRedirectUri
-      },
-      cache: {
-        cacheLocation: BrowserCacheLocation.LocalStorage,
-        storeAuthStateInCookie: false
-      }
-    });
+    try {
+      const msalInstance = new PublicClientApplication({
+        auth: {
+          clientId: environment.azureAd.clientId,
+          authority: environment.azureAd.authority,
+          redirectUri: environment.azureAd.redirectUri,
+          postLogoutRedirectUri: environment.azureAd.postLogoutRedirectUri,
+          navigateToLoginRequestUrl: environment.azureAd.navigateToLoginRequestUrl,
+          clientCapabilities: environment.azureAd.clientCapabilities,
+          knownAuthorities: environment.azureAd.knownAuthorities,
+          cloudDiscoveryMetadata: environment.azureAd.cloudDiscoveryMetadata,
+          authorityMetadata: environment.azureAd.authorityMetadata
+        },
+        cache: {
+          cacheLocation: BrowserCacheLocation.LocalStorage,
+          storeAuthStateInCookie: false,
+          secureCookies: false
+        },
+        system: {
+          loggerOptions: {
+            loggerCallback: (level: any, message: string, containsPii: boolean) => {
+              if (environment.app.enableLogging && !containsPii) {
+                console.log(`[MSAL] ${message}`);
+              }
+            },
+            piiLoggingEnabled: false,
+            logLevel: environment.app.enableLogging ? 2 : 0 // Info level when logging enabled
+          },
+          // Custom token validation for B2C issuer handling
+          tokenRenewalOffsetSeconds: 300,
+          iframeHashTimeout: 6000,
+          loadFrameTimeout: 0
+        }
+      });
+      
+      // Initialize immediately with B2C-specific error handling
+      msalInstance.initialize().then(() => {
+        console.log('[MSAL] Instance initialized successfully');
+        
+        // Handle B2C issuer validation if needed
+        if ((environment.azureAd as any).issuerValidation?.acceptedIssuers) {
+          console.log('[MSAL] B2C issuer validation configured');
+          console.log('[MSAL] Accepted issuers:', (environment.azureAd as any).issuerValidation.acceptedIssuers);
+        }
+      }).catch(error => {
+        console.error('Error initializing MSAL:', error);
+        
+        // B2C specific error handling
+        if (error.message?.includes('authority') || error.message?.includes('issuer')) {
+          console.error('[MSAL B2C] Authority/Issuer validation error - check B2C configuration');
+          console.error('[MSAL B2C] Current authority:', environment.azureAd.authority);
+          console.error('[MSAL B2C] validateAuthority setting:', (environment.azureAd as any).validateAuthority);
+        }
+      });
+      
+      return msalInstance;
+    } catch (error) {
+      console.error('Error creating MSAL instance:', error);
+      throw error;
+    }
   } else {
     // Return a mock instance for SSR
     return {
@@ -58,7 +106,8 @@ export function MSALInstanceFactory(): IPublicClientApplication {
       clearCache: () => Promise.resolve(),
       setActiveAccount: () => {},
       getActiveAccount: () => null,
-      hydrateCache: () => Promise.resolve()
+      hydrateCache: () => Promise.resolve(),
+      handleRedirectPromise: () => Promise.resolve(null)
     } as any;
   }
 }

@@ -4,6 +4,7 @@ import { MsalService } from '@azure/msal-angular';
 import { AccountInfo, AuthenticationResult, RedirectRequest, SilentRequest } from '@azure/msal-browser';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { MsalInitService } from '../services/msal-init.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,9 +19,23 @@ export class AuthService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
-  constructor(private msalService: MsalService) {
+  constructor(
+    private msalService: MsalService,
+    private msalInitService: MsalInitService
+  ) {
     if (this.isBrowser) {
-      this.checkAuthenticationStatus();
+      this.initializeAuth();
+    }
+  }
+
+  private async initializeAuth(): Promise<void> {
+    try {
+      const initialized = await this.msalInitService.ensureInitialized();
+      if (initialized) {
+        this.checkAuthenticationStatus();
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error);
     }
   }
 
@@ -41,8 +56,14 @@ export class AuthService {
   /**
    * Inicia el proceso de login con Azure AD
    */
-  login(): void {
+  async login(): Promise<void> {
     if (!this.isBrowser) return;
+    
+    const initialized = await this.msalInitService.ensureInitialized();
+    if (!initialized) {
+      console.error('MSAL not initialized, cannot login');
+      return;
+    }
     
     try {
       const loginRequest: RedirectRequest = {
@@ -59,8 +80,14 @@ export class AuthService {
   /**
    * Cierra la sesión del usuario
    */
-  logout(): void {
+  async logout(): Promise<void> {
     if (!this.isBrowser) return;
+    
+    const initialized = await this.msalInitService.ensureInitialized();
+    if (!initialized) {
+      console.error('MSAL not initialized, cannot logout');
+      return;
+    }
     
     try {
       this.msalService.logoutRedirect({
@@ -76,6 +103,12 @@ export class AuthService {
    */
   async getAccessToken(): Promise<string | null> {
     if (!this.isBrowser) return null;
+    
+    const initialized = await this.msalInitService.ensureInitialized();
+    if (!initialized) {
+      console.error('MSAL not initialized, cannot get access token');
+      return null;
+    }
     
     try {
       const account = this.msalService.instance.getAllAccounts()[0];
@@ -102,6 +135,12 @@ export class AuthService {
   async getBffToken(): Promise<string | null> {
     if (!this.isBrowser) return null;
     
+    const initialized = await this.msalInitService.ensureInitialized();
+    if (!initialized) {
+      console.error('MSAL not initialized, cannot get BFF token');
+      return null;
+    }
+    
     try {
       const account = this.msalService.instance.getAllAccounts()[0];
       if (!account) {
@@ -125,7 +164,7 @@ export class AuthService {
    * Verifica si el usuario está autenticado
    */
   isAuthenticated(): boolean {
-    if (!this.isBrowser) return false;
+    if (!this.isBrowser || !this.msalInitService.initialized) return false;
     
     try {
       const accounts = this.msalService.instance.getAllAccounts();
@@ -140,7 +179,7 @@ export class AuthService {
    * Obtiene la información del usuario actual
    */
   getCurrentUser(): AccountInfo | null {
-    if (!this.isBrowser) return null;
+    if (!this.isBrowser || !this.msalInitService.initialized) return null;
     
     try {
       const accounts = this.msalService.instance.getAllAccounts();

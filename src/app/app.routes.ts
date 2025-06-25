@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { AuthGuard } from './auth/auth.guard';
 import { TiendaComponent } from './components/tienda/tienda.component';
 import { AdministracionComponent } from './components/administracion/administracion.component';
+import { MsalDebugComponent } from './components/msal-debug/msal-debug.component';
 
 export const routes: Routes = [
   {
@@ -16,6 +17,10 @@ export const routes: Routes = [
     path: 'administracion',
     component: AdministracionComponent,
     canActivate: [AuthGuard]
+  },
+  {
+    path: 'debug/msal',
+    component: MsalDebugComponent
   },
   {
     path: '**',

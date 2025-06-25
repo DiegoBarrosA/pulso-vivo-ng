@@ -424,7 +424,7 @@ export class AdministracionComponent implements OnInit {
     alert('Funcionalidad de exportación en desarrollo');
   }
 
-  cerrarSesion(): void {
-    this.authService.logout();
+  async cerrarSesion(): Promise<void> {
+    await this.authService.logout();
   }
 }

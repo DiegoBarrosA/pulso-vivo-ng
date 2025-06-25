@@ -1,0 +1,223 @@
+<div class="msal-debug-container">
+  <h2>🔍 MSAL Configuration Debug Panel</h2>
+  
+  <!-- Configuration Status -->
+  <div class="debug-section">
+    <h3>📊 Configuration Status</h3>
+    <div class="status-grid">
+      <div class="status-item" [class.success]="validation.isValid" [class.error]="!validation.isValid">
+        <span class="status-label">Valid Configuration:</span>
+        <span class="status-value">{{ validation.isValid ? '✅ Yes' : '❌ No' }}</span>
+      </div>
+      <div class="status-item" [class.success]="isInitialized" [class.error]="!isInitialized">
+        <span class="status-label">MSAL Initialized:</span>
+        <span class="status-value">{{ isInitialized ? '✅ Yes' : '❌ No' }}</span>
+      </div>
+      <div class="status-item" [class.success]="isSpaConfig" [class.warning]="!isSpaConfig">
+        <span class="status-label">SPA Configuration:</span>
+        <span class="status-value">{{ isSpaConfig ? '✅ Yes' : '⚠️ No' }}</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Accounts Found:</span>
+        <span class="status-value">{{ accountsCount }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Errors -->
+  <div class="debug-section" *ngIf="validation.errors.length > 0">
+    <h3>❌ Configuration Errors</h3>
+    <ul class="error-list">
+      <li *ngFor="let error of validation.errors" class="error-item">{{ error }}</li>
+    </ul>
+  </div>
+
+  <!-- Warnings -->
+  <div class="debug-section" *ngIf="validation.warnings.length > 0">
+    <h3>⚠️ Configuration Warnings</h3>
+    <ul class="warning-list">
+      <li *ngFor="let warning of validation.warnings" class="warning-item">{{ warning }}</li>
+    </ul>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="debug-section" *ngIf="validation.suggestions.length > 0">
+    <h3>💡 Suggestions</h3>
+    <ul class="suggestion-list">
+      <li *ngFor="let suggestion of validation.suggestions" class="suggestion-item">{{ suggestion }}</li>
+    </ul>
+  </div>
+
+  <!-- Current Configuration -->
+  <div class="debug-section">
+    <h3>⚙️ Current Configuration</h3>
+    <div class="config-grid">
+      <div class="config-item">
+        <span class="config-label">Client ID:</span>
+        <span class="config-value">{{ currentConfig.clientId }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Tenant ID:</span>
+        <span class="config-value">{{ extractedTenantId || 'Not found' }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Authority:</span>
+        <span class="config-value">{{ currentConfig.authority }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Redirect URI:</span>
+        <span class="config-value">{{ currentConfig.redirectUri }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Scopes:</span>
+        <span class="config-value">{{ currentConfig.scopes | json }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Client Capabilities:</span>
+        <span class="config-value">{{ currentConfig.clientCapabilities | json }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Current URL:</span>
+        <span class="config-value">{{ currentUrl }}</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Current Origin:</span>
+        <span class="config-value">{{ currentOrigin }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- JWT Tokens Section -->
+  <div class="debug-section">
+    <h3>🎫 JWT Tokens</h3>
+    <div class="button-group">
+      <button class="debug-btn secondary" (click)="toggleTokenDisplay()">
+        {{ showTokens ? '🙈 Hide Tokens' : '👁️ Show Tokens' }}
+      </button>
+      <button class="debug-btn secondary" (click)="refreshTokens()" *ngIf="showTokens">
+        🔄 Refresh Tokens
+      </button>
+    </div>
+    
+    <div *ngIf="showTokens" class="tokens-container">
+      <!-- Access Token -->
+      <div class="token-section" *ngIf="currentTokens.accessToken">
+        <h4>🔑 Access Token</h4>
+        <div class="token-actions">
+          <button class="debug-btn small" (click)="copyTokenRaw('access')">
+            📋 Copy Raw JWT
+          </button>
+          <button class="debug-btn small" (click)="copyTokenDecoded('access')">
+            📋 Copy Decoded
+          </button>
+        </div>
+        
+        <div class="token-display">
+          <h5>Raw JWT (First 100 chars):</h5>
+          <div class="token-preview">
+            {{ currentTokens.accessToken.substring(0, 100) }}...
+          </div>
+          
+          <h5>Decoded Payload:</h5>
+          <pre class="token-json">{{ currentTokens.accessTokenDecoded | json }}</pre>
+        </div>
+      </div>
+
+      <!-- ID Token -->
+      <div class="token-section" *ngIf="currentTokens.idToken">
+        <h4>🆔 ID Token</h4>
+        <div class="token-actions">
+          <button class="debug-btn small" (click)="copyTokenRaw('id')">
+            📋 Copy Raw JWT
+          </button>
+          <button class="debug-btn small" (click)="copyTokenDecoded('id')">
+            📋 Copy Decoded
+          </button>
+        </div>
+        
+        <div class="token-display">
+          <h5>Raw JWT (First 100 chars):</h5>
+          <div class="token-preview">
+            {{ currentTokens.idToken.substring(0, 100) }}...
+          </div>
+          
+          <h5>Decoded Payload:</h5>
+          <pre class="token-json">{{ currentTokens.idTokenDecoded | json }}</pre>
+        </div>
+      </div>
+
+      <!-- No Tokens Message -->
+      <div *ngIf="!currentTokens.accessToken && !currentTokens.idToken" class="no-tokens">
+        <p>No tokens available. Please login first using the "Test Login" button.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="debug-section">
+    <h3>🛠️ Debug Actions</h3>
+    <div class="button-group">
+      <button class="debug-btn primary" (click)="runFullDiagnostic()">
+        🔍 Run Full Diagnostic
+      </button>
+      <button class="debug-btn secondary" (click)="validateConfiguration()">
+        ✅ Validate Configuration
+      </button>
+      <button class="debug-btn secondary" (click)="testLogin()">
+        🔐 Test Login
+      </button>
+      <button class="debug-btn secondary" (click)="downloadReport()">
+        📄 Download Report
+      </button>
+      <button class="debug-btn danger" (click)="clearCache()">
+        🗑️ Clear Cache
+      </button>
+    </div>
+  </div>
+
+  <!-- Azure Portal Links -->
+  <div class="debug-section">
+    <h3>🌐 Azure Portal Links</h3>
+    <div class="link-group">
+      <a [href]="azurePortalLinks.appRegistration" target="_blank" class="azure-link">
+        📱 App Registration
+      </a>
+      <a [href]="azurePortalLinks.authentication" target="_blank" class="azure-link">
+        🔐 Authentication Settings
+      </a>
+      <a [href]="azurePortalLinks.apiPermissions" target="_blank" class="azure-link">
+        🔑 API Permissions
+      </a>
+      <a [href]="azurePortalLinks.allApps" target="_blank" class="azure-link">
+        📋 All App Registrations
+      </a>
+    </div>
+  </div>
+
+  <!-- Quick Fix Instructions -->
+  <div class="debug-section" *ngIf="!validation.isValid">
+    <h3>🚀 Quick Fix Instructions</h3>
+    <div class="instruction-box">
+      <h4>Most Common Issue: App not configured as SPA</h4>
+      <ol class="instruction-list">
+        <li>Go to <a [href]="azurePortalLinks.authentication" target="_blank">Azure Portal Authentication</a></li>
+        <li>Under "Platform configurations", remove any "Web" platform</li>
+        <li>Click "Add a platform" → "Single-page application"</li>
+        <li>Add redirect URI: <code>{{ currentConfig.redirectUri }}</code></li>
+        <li>Save changes and wait 2-3 minutes</li>
+        <li>Refresh this page and test again</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Error Log -->
+  <div class="debug-section" *ngIf="errorLog.length > 0">
+    <h3>📋 Recent Errors</h3>
+    <div class="error-log">
+      <div *ngFor="let error of errorLog" class="log-entry">
+        <span class="log-timestamp">{{ error.timestamp | date:'HH:mm:ss' }}</span>
+        <span class="log-message">{{ error.message }}</span>
+      </div>
+    </div>
+  </div>
+</div>
