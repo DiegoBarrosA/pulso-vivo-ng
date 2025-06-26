@@ -30,7 +30,7 @@ export const environment = {
     baseUrl: "https://your-bff-api-domain.com/api", // Reemplazar con la URL de tu BFF
     timeout: 30000, // 30 segundos
     retryAttempts: 3,
-    bffScopes: ["api://your-api-client-id/access_as_user"], // Reemplazar con el scope de tu BFF
+    bffScopes: ["https://PulsoVivo.onmicrosoft.com/pulso-vivo-api/access", "openid", "profile"], // B2C API scopes
   },
 
   // Configuraciones de la aplicación

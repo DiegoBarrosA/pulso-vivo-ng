@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { MsalService } from '@azure/msal-angular';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { MsalDebugService } from './msal-debug.service';
+
 
 @Injectable({
   providedIn: 'root'
@@ -19,8 +19,7 @@ export class MsalInitService {
   private isInitialized = false;
 
   constructor(
-    private msalService: MsalService,
-    private msalDebugService: MsalDebugService
+    private msalService: MsalService
   ) {
     if (this.isBrowser) {
       this.initialize();
@@ -79,9 +78,6 @@ export class MsalInitService {
 
     } catch (error) {
       console.error('[MSAL Init] Error durante la inicialización:', error);
-      
-      // Ejecutar diagnóstico completo del error
-      this.msalDebugService.diagnose400Error();
       
       // Log detallado del error para debugging adicional
       this.logDetailedError(error);
@@ -199,14 +195,7 @@ export class MsalInitService {
       });
       console.groupEnd();
       
-      // Agregar validación de configuración
-      const validation = this.msalDebugService.validateConfiguration();
-      if (!validation.isValid) {
-        console.warn('[MSAL Init] Se detectaron problemas de configuración');
-        console.log('Errores:', validation.errors);
-        console.log('Advertencias:', validation.warnings);
-        console.log('Sugerencias:', validation.suggestions);
-      }
+
     }
   }
 
@@ -243,24 +232,6 @@ export class MsalInitService {
     
     // Información general
     this.logDiagnosticInfo();
-    
-    // Validación de configuración
-    const validation = this.msalDebugService.validateConfiguration();
-    console.log('Validación de configuración:', validation);
-    
-    // Verificar si es configuración SPA
-    const isSpa = this.msalDebugService.isSpaConfiguration();
-    console.log('Configuración SPA detectada:', isSpa);
-    
-    // Configuración recomendada
-    if (!isSpa) {
-      const recommended = this.msalDebugService.getRecommendedSpaConfiguration();
-      console.log('Configuración SPA recomendada:', recommended);
-    }
-    
-    // Generar reporte
-    const report = this.msalDebugService.generateReport();
-    console.log('Reporte completo:', report);
     
     console.groupEnd();
   }
