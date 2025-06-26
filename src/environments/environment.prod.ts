@@ -1,23 +1,36 @@
 export const environment = {
   production: true,
 
-  // Configuración de Azure AD
+  // Configuración de Azure AD B2C
   azureAd: {
-    clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81", // Reemplazar con tu Client ID
-
+    clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81", // Tu Client ID de B2C
     authority:
-      "https://login.microsoftonline.com/82c6cf20-e689-4aa9-bedf-7acaf7c4ead7", // Reemplazar con tu Tenant ID
+      "https://PulsoVivo.b2clogin.com/PulsoVivo.onmicrosoft.com/B2C_1_pulso_vivo_register_and_login", // B2C tenant y policy correctos
     redirectUri: "https://your-production-domain.com",
     postLogoutRedirectUri: "https://your-production-domain.com",
-    scopes: ["user.read"],
+    scopes: ["openid", "profile"], // B2C scopes básicos
+    // Configuraciones específicas para B2C
+    knownAuthorities: ["PulsoVivo.b2clogin.com"], // B2C domain correcto
+    cloudDiscoveryMetadata: "",
+    authorityMetadata: "",
+    navigateToLoginRequestUrl: false,
+    clientCapabilities: ["CP1"],
+    // B2C specific settings
+    validateAuthority: false, // Important for B2C
+    authorityDomain: "PulsoVivo.b2clogin.com",
+    // Alternative authority formats for issuer validation
+    alternativeAuthorities: [
+      "https://login.microsoftonline.com/82c6cf20-e689-4aa9-bedf-7acaf7c4ead7", // Regular AAD
+      "https://sts.windows.net/82c6cf20-e689-4aa9-bedf-7acaf7c4ead7/", // STS issuer
+    ],
   },
 
-  // Configuración del BFF API
+  // Configuración del API (Inventory Service)
   api: {
-    baseUrl: "https://your-production-bff-api-domain.com/api", // Reemplazar con la URL de tu BFF de producción
+    baseUrl: process.env['INVENTORY_SERVICE_URL'] || "https://your-production-inventory-service.com/api", // URL del pulso-vivo-inventory-service
     timeout: 30000, // 30 segundos
     retryAttempts: 3,
-    bffScopes: ["api://your-production-api-client-id/access_as_user"], // Reemplazar con el scope de tu BFF de producción
+    bffScopes: ["https://PulsoVivo.onmicrosoft.com/pulso-vivo-api/access", "openid", "profile"], // B2C API scopes
   },
 
   // Configuraciones de la aplicación

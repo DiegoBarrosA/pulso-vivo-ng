@@ -3,19 +3,25 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { ApiService, ProductoApi } from '../../services/api.service';
 import { Observable } from 'rxjs';
 
 export interface ProductoStock {
   id: number;
-  nombre: string;
-  descripcion: string;
-  precio: number;
-  categoria: string;
-  cantidadStock: number;
-  stockMinimo: number;
-  proveedor: string;
-  fechaActualizacion: Date;
-  activo: boolean;
+  name: string;
+  description: string;
+  quantity: number;
+  category: string;
+  active: boolean;
+  // Legacy fields for display compatibility - TODO: Remove after UI update
+  nombre?: string;
+  descripcion?: string;
+  cantidadStock?: number;
+  precio?: number;
+  stockMinimo?: number;
+  proveedor?: string;
+  fechaActualizacion?: Date;
+  activo?: boolean;
 }
 
 export interface MovimientoStock {
@@ -58,13 +64,15 @@ export class AdministracionComponent implements OnInit {
   
   // Formulario de producto
   formularioProducto: Partial<ProductoStock> = {
+    name: '',
+    description: '',
+    quantity: 0,
+    category: '',
+    active: true,
+    // Legacy fields for form compatibility
     nombre: '',
     descripcion: '',
-    precio: 0,
-    categoria: '',
     cantidadStock: 0,
-    stockMinimo: 1,
-    proveedor: '',
     activo: true
   };
   
@@ -83,24 +91,73 @@ export class AdministracionComponent implements OnInit {
     valorInventario: 0
   };
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private apiService: ApiService
+  ) {}
 
   ngOnInit(): void {
-    this.cargarDatosMuestra();
-    this.calcularEstadisticas();
-    this.extraerCategorias();
+    this.cargarProductos();
+    this.cargarCategorias();
   }
 
-  // === DATOS DE MUESTRA ===
+  // === CARGA DE DATOS DESDE API ===
+  private cargarProductos(): void {
+    this.apiService.getProductos().subscribe({
+      next: (productos) => {
+        // Convert API products to display format with legacy field mapping
+        this.productos = productos.map(p => ({
+          ...p,
+          // Legacy field mappings for existing UI
+          nombre: p.name,
+          descripcion: p.description,
+          cantidadStock: p.quantity,
+          activo: p.active,
+          categoria: p.category,
+          // Default values for fields not in API
+          precio: 0,
+          stockMinimo: 5,
+          proveedor: 'N/A',
+          fechaActualizacion: new Date()
+        }));
+        this.productosFiltrados = [...this.productos];
+        this.calcularEstadisticas();
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+        this.cargarDatosMuestra(); // Fallback to sample data
+      }
+    });
+  }
+
+  private cargarCategorias(): void {
+    this.apiService.getCategorias().subscribe({
+      next: (categorias) => {
+        this.categorias = categorias;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+        this.extraerCategorias(); // Fallback to extracting from products
+      }
+    });
+  }
+
+  // === DATOS DE MUESTRA (FALLBACK) ===
   private cargarDatosMuestra(): void {
     this.productos = [
       {
         id: 1,
+        name: 'Tensiómetro Digital',
+        description: 'Tensiómetro automático de brazo con pantalla LCD',
+        quantity: 15,
+        category: 'Equipos de Diagnóstico',
+        active: true,
+        // Legacy mappings
         nombre: 'Tensiómetro Digital',
         descripcion: 'Tensiómetro automático de brazo con pantalla LCD',
+        cantidadStock: 15,
         precio: 89.99,
         categoria: 'Equipos de Diagnóstico',
-        cantidadStock: 15,
         stockMinimo: 5,
         proveedor: 'MedTech Solutions',
         fechaActualizacion: new Date('2024-01-15'),
@@ -108,11 +165,17 @@ export class AdministracionComponent implements OnInit {
       },
       {
         id: 2,
+        name: 'Estetoscopio Profesional',
+        description: 'Estetoscopio de doble campana para adultos',
+        quantity: 8,
+        category: 'Equipos de Diagnóstico',
+        active: true,
+        // Legacy mappings
         nombre: 'Estetoscopio Profesional',
         descripcion: 'Estetoscopio de doble campana para adultos',
+        cantidadStock: 8,
         precio: 45.50,
         categoria: 'Equipos de Diagnóstico',
-        cantidadStock: 8,
         stockMinimo: 10,
         proveedor: 'Medical Instruments Co.',
         fechaActualizacion: new Date('2024-01-10'),
@@ -120,38 +183,20 @@ export class AdministracionComponent implements OnInit {
       },
       {
         id: 3,
+        name: 'Termómetro Infrarrojo',
+        description: 'Termómetro sin contacto para frente',
+        quantity: 0,
+        category: 'Equipos de Diagnóstico',
+        active: true,
+        // Legacy mappings
         nombre: 'Termómetro Infrarrojo',
         descripcion: 'Termómetro sin contacto para frente',
+        cantidadStock: 0,
         precio: 25.99,
         categoria: 'Equipos de Diagnóstico',
-        cantidadStock: 0,
         stockMinimo: 5,
         proveedor: 'ThermoTech',
         fechaActualizacion: new Date('2024-01-12'),
-        activo: true
-      },
-      {
-        id: 4,
-        nombre: 'Guantes de Nitrilo (100 unidades)',
-        descripcion: 'Guantes desechables sin polvo, talla M',
-        precio: 12.99,
-        categoria: 'Suministros Desechables',
-        cantidadStock: 50,
-        stockMinimo: 20,
-        proveedor: 'SafeGuard Medical',
-        fechaActualizacion: new Date('2024-01-14'),
-        activo: true
-      },
-      {
-        id: 5,
-        nombre: 'Mascarillas Quirúrgicas (50 unidades)',
-        descripcion: 'Mascarillas desechables de 3 capas',
-        precio: 8.99,
-        categoria: 'Suministros Desechables',
-        cantidadStock: 100,
-        stockMinimo: 30,
-        proveedor: 'ProtectMed',
-        fechaActualizacion: new Date('2024-01-13'),
         activo: true
       }
     ];
@@ -199,14 +244,14 @@ export class AdministracionComponent implements OnInit {
 
   // === GESTIÓN DE INVENTARIO ===
   private extraerCategorias(): void {
-    this.categorias = [...new Set(this.productos.map(p => p.categoria))];
+    this.categorias = [...new Set(this.productos.map(p => p.category || p.categoria || ''))];
   }
 
   private calcularEstadisticas(): void {
     this.estadisticas.totalProductos = this.productos.length;
-    this.estadisticas.productosActivos = this.productos.filter(p => p.activo).length;
-    this.estadisticas.productosStockBajo = this.productos.filter(p => p.cantidadStock <= p.stockMinimo).length;
-    this.estadisticas.valorInventario = this.productos.reduce((total, p) => total + (p.precio * p.cantidadStock), 0);
+    this.estadisticas.productosActivos = this.productos.filter(p => p.active || p.activo).length;
+    this.estadisticas.productosStockBajo = this.productos.filter(p => (p.quantity || p.cantidadStock || 0) <= (p.stockMinimo || 5)).length;
+    this.estadisticas.valorInventario = this.productos.reduce((total, p) => total + ((p.precio || 0) * (p.quantity || p.cantidadStock || 0)), 0);
   }
 
   // === FILTROS Y BÚSQUEDAS ===
@@ -229,31 +274,31 @@ export class AdministracionComponent implements OnInit {
     if (this.terminoBusqueda) {
       const termino = this.terminoBusqueda.toLowerCase();
       productosFiltrados = productosFiltrados.filter(p =>
-        p.nombre.toLowerCase().includes(termino) ||
-        p.descripcion.toLowerCase().includes(termino) ||
-        p.proveedor.toLowerCase().includes(termino)
+        (p.name || p.nombre || '').toLowerCase().includes(termino) ||
+        (p.description || p.descripcion || '').toLowerCase().includes(termino) ||
+        (p.proveedor || '').toLowerCase().includes(termino)
       );
     }
 
     // Filtro por categoría
     if (this.categoriaFiltro) {
-      productosFiltrados = productosFiltrados.filter(p => p.categoria === this.categoriaFiltro);
+      productosFiltrados = productosFiltrados.filter(p => (p.category || p.categoria) === this.categoriaFiltro);
     }
 
     // Filtro por estado
     if (this.estadoFiltro) {
       switch (this.estadoFiltro) {
         case 'activo':
-          productosFiltrados = productosFiltrados.filter(p => p.activo);
+          productosFiltrados = productosFiltrados.filter(p => p.active || p.activo);
           break;
         case 'inactivo':
-          productosFiltrados = productosFiltrados.filter(p => !p.activo);
+          productosFiltrados = productosFiltrados.filter(p => !(p.active || p.activo));
           break;
         case 'stock_bajo':
-          productosFiltrados = productosFiltrados.filter(p => p.cantidadStock <= p.stockMinimo);
+          productosFiltrados = productosFiltrados.filter(p => (p.quantity || p.cantidadStock || 0) <= (p.stockMinimo || 5));
           break;
         case 'sin_stock':
-          productosFiltrados = productosFiltrados.filter(p => p.cantidadStock === 0);
+          productosFiltrados = productosFiltrados.filter(p => (p.quantity || p.cantidadStock || 0) === 0);
           break;
       }
     }
@@ -272,13 +317,15 @@ export class AdministracionComponent implements OnInit {
   abrirModalCrear(): void {
     this.modoModal = 'crear';
     this.formularioProducto = {
+      name: '',
+      description: '',
+      quantity: 0,
+      category: '',
+      active: true,
+      // Legacy fields for form compatibility
       nombre: '',
       descripcion: '',
-      precio: 0,
-      categoria: '',
       cantidadStock: 0,
-      stockMinimo: 1,
-      proveedor: '',
       activo: true
     };
     this.mostrarModal = true;
@@ -309,47 +356,123 @@ export class AdministracionComponent implements OnInit {
 
   // === OPERACIONES CRUD ===
   guardarProducto(): void {
+    // Sync legacy fields with new API fields
+    const productoData: Partial<ProductoApi> = {
+      name: this.formularioProducto.name || this.formularioProducto.nombre || '',
+      description: this.formularioProducto.description || this.formularioProducto.descripcion || '',
+      quantity: this.formularioProducto.quantity || this.formularioProducto.cantidadStock || 0,
+      category: this.formularioProducto.category || this.formularioProducto.categoria || '',
+      active: this.formularioProducto.active !== undefined ? this.formularioProducto.active : this.formularioProducto.activo || true
+    };
+
     if (this.modoModal === 'crear') {
-      const nuevoProducto: ProductoStock = {
-        ...this.formularioProducto as ProductoStock,
-        id: Math.max(...this.productos.map(p => p.id)) + 1,
-        fechaActualizacion: new Date()
-      };
-      this.productos.push(nuevoProducto);
+      this.apiService.crearProducto(productoData).subscribe({
+        next: (producto) => {
+          this.cargarProductos(); // Reload products from API
+        },
+        error: (error) => {
+          console.error('Error creating product:', error);
+          // Fallback to local creation
+          const nuevoProducto: ProductoStock = {
+            ...productoData,
+            id: Math.max(...this.productos.map(p => p.id)) + 1,
+            // Legacy mappings
+            nombre: productoData.name,
+            descripcion: productoData.description,
+            cantidadStock: productoData.quantity,
+            categoria: productoData.category,
+            activo: productoData.active,
+            fechaActualizacion: new Date()
+          };
+          this.productos.push(nuevoProducto);
+          this.calcularEstadisticas();
+          this.aplicarFiltros();
+        }
+      });
     } else if (this.modoModal === 'editar' && this.productoSeleccionado) {
-      const index = this.productos.findIndex(p => p.id === this.productoSeleccionado!.id);
-      if (index !== -1) {
-        this.productos[index] = {
-          ...this.formularioProducto as ProductoStock,
-          id: this.productoSeleccionado.id,
-          fechaActualizacion: new Date()
-        };
-      }
+      this.apiService.actualizarProducto(this.productoSeleccionado.id, productoData).subscribe({
+        next: (producto) => {
+          this.cargarProductos(); // Reload products from API
+        },
+        error: (error) => {
+          console.error('Error updating product:', error);
+          // Fallback to local update
+          const index = this.productos.findIndex(p => p.id === this.productoSeleccionado!.id);
+          if (index !== -1) {
+            this.productos[index] = {
+              ...this.productos[index],
+              ...productoData,
+              // Legacy mappings
+              nombre: productoData.name,
+              descripcion: productoData.description,
+              cantidadStock: productoData.quantity,
+              categoria: productoData.category,
+              activo: productoData.active,
+              fechaActualizacion: new Date()
+            };
+          }
+          this.calcularEstadisticas();
+          this.aplicarFiltros();
+        }
+      });
     }
 
-    this.calcularEstadisticas();
-    this.aplicarFiltros();
     this.cerrarModal();
   }
 
   eliminarProducto(producto: ProductoStock): void {
-    if (confirm(`¿Está seguro de que desea eliminar "${producto.nombre}"?`)) {
-      const index = this.productos.findIndex(p => p.id === producto.id);
-      if (index !== -1) {
-        this.productos.splice(index, 1);
-        this.calcularEstadisticas();
-        this.aplicarFiltros();
-      }
+    const nombre = producto.name || producto.nombre || 'este producto';
+    if (confirm(`¿Está seguro de que desea eliminar "${nombre}"?`)) {
+      // TODO: Implement delete endpoint in inventory service
+      console.warn('Delete endpoint not available in inventory service');
+      
+      // For now, deactivate the product instead of deleting
+      const productoData: Partial<ProductoApi> = {
+        ...producto,
+        active: false
+      };
+      
+      this.apiService.actualizarProducto(producto.id, productoData).subscribe({
+        next: (producto) => {
+          this.cargarProductos(); // Reload products from API
+        },
+        error: (error) => {
+          console.error('Error deactivating product:', error);
+          // Fallback to local removal
+          const index = this.productos.findIndex(p => p.id === producto.id);
+          if (index !== -1) {
+            this.productos.splice(index, 1);
+            this.calcularEstadisticas();
+            this.aplicarFiltros();
+          }
+        }
+      });
     }
   }
 
   toggleEstadoProducto(producto: ProductoStock): void {
-    const index = this.productos.findIndex(p => p.id === producto.id);
-    if (index !== -1) {
-      this.productos[index].activo = !this.productos[index].activo;
-      this.productos[index].fechaActualizacion = new Date();
-      this.calcularEstadisticas();
-    }
+    const newActiveState = !(producto.active || producto.activo);
+    const productoData: Partial<ProductoApi> = {
+      ...producto,
+      active: newActiveState
+    };
+
+    this.apiService.actualizarProducto(producto.id, productoData).subscribe({
+      next: (productoActualizado) => {
+        this.cargarProductos(); // Reload products from API
+      },
+      error: (error) => {
+        console.error('Error updating product status:', error);
+        // Fallback to local update
+        const index = this.productos.findIndex(p => p.id === producto.id);
+        if (index !== -1) {
+          this.productos[index].active = newActiveState;
+          this.productos[index].activo = newActiveState;
+          this.productos[index].fechaActualizacion = new Date();
+          this.calcularEstadisticas();
+        }
+      }
+    });
   }
 
   // === MOVIMIENTOS DE STOCK ===
@@ -369,23 +492,43 @@ export class AdministracionComponent implements OnInit {
 
     this.movimientos.unshift(nuevoMovimiento);
 
-    // Actualizar stock del producto
-    const index = this.productos.findIndex(p => p.id === this.productoSeleccionado!.id);
-    if (index !== -1) {
-      const cantidad = this.formularioMovimiento.cantidad;
-      switch (this.formularioMovimiento.tipo) {
-        case 'entrada':
-          this.productos[index].cantidadStock += cantidad;
-          break;
-        case 'salida':
-          this.productos[index].cantidadStock = Math.max(0, this.productos[index].cantidadStock - cantidad);
-          break;
-        case 'ajuste':
-          this.productos[index].cantidadStock = cantidad;
-          break;
-      }
-      this.productos[index].fechaActualizacion = new Date();
+    // Actualizar stock del producto usando API
+    const cantidad = this.formularioMovimiento.cantidad;
+    let quantityChange = 0;
+    
+    switch (this.formularioMovimiento.tipo) {
+      case 'entrada':
+        quantityChange = cantidad;
+        break;
+      case 'salida':
+        quantityChange = -cantidad;
+        break;
+      case 'ajuste':
+        // For adjustment, calculate the difference from current stock
+        const currentStock = this.productoSeleccionado.quantity || this.productoSeleccionado.cantidadStock || 0;
+        quantityChange = cantidad - currentStock;
+        break;
     }
+
+    this.apiService.actualizarStock(this.productoSeleccionado.id, quantityChange).subscribe({
+      next: () => {
+        this.cargarProductos(); // Reload products from API
+      },
+      error: (error) => {
+        console.error('Error updating stock:', error);
+        // Fallback to local update
+        const index = this.productos.findIndex(p => p.id === this.productoSeleccionado!.id);
+        if (index !== -1) {
+          const currentStock = this.productos[index].quantity || this.productos[index].cantidadStock || 0;
+          const newStock = Math.max(0, currentStock + quantityChange);
+          this.productos[index].quantity = newStock;
+          this.productos[index].cantidadStock = newStock;
+          this.productos[index].fechaActualizacion = new Date();
+          this.calcularEstadisticas();
+          this.aplicarFiltros();
+        }
+      }
+    });
 
     this.calcularEstadisticas();
     this.aplicarFiltros();
@@ -394,8 +537,11 @@ export class AdministracionComponent implements OnInit {
 
   // === UTILIDADES ===
   getEstadoStock(producto: ProductoStock): 'normal' | 'bajo' | 'agotado' {
-    if (producto.cantidadStock === 0) return 'agotado';
-    if (producto.cantidadStock <= producto.stockMinimo) return 'bajo';
+    const stock = producto.quantity || producto.cantidadStock || 0;
+    const minStock = producto.stockMinimo || 5;
+    
+    if (stock === 0) return 'agotado';
+    if (stock <= minStock) return 'bajo';
     return 'normal';
   }
 

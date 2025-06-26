@@ -14,33 +14,22 @@ export interface ApiResponse<T> {
 
 export interface ProductoApi {
   id: number;
-  nombre: string;
-  descripcion: string;
-  precio: number;
-  categoria: string;
-  cantidadStock: number;
-  stockMinimo: number;
-  proveedor: string;
-  activo: boolean;
-  fechaCreacion: string;
-  fechaActualizacion: string;
+  name: string;
+  description: string;
+  quantity: number;
+  category: string;
+  active: boolean;
 }
 
-export interface MovimientoApi {
-  id: number;
-  productoId: number;
-  tipo: 'entrada' | 'salida' | 'ajuste';
-  cantidad: number;
-  motivo: string;
-  fecha: string;
-  usuario: string;
+export interface InventoryUpdateRequest {
+  quantityChanged: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private readonly baseUrl = environment.api.baseUrl;
+  private readonly baseUrl = environment.api.baseUrl + '/inventory';
   
   constructor(
     private http: HttpClient,
@@ -48,18 +37,12 @@ export class ApiService {
   ) {}
 
   /**
-   * Crea los headers HTTP con autenticación JWT
+   * Crea los headers HTTP básicos (JWT manejado por AWS API Gateway)
    */
-  private createAuthHeaders(): Observable<HttpHeaders> {
-    return from(this.authService.getBffToken()).pipe(
-      switchMap(token => {
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        });
-        return [headers];
-      })
-    );
+  private createHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
   }
 
   /**
@@ -85,208 +68,103 @@ export class ApiService {
   /**
    * Obtiene todos los productos
    */
-  getProductos(): Observable<ApiResponse<ProductoApi[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers => 
-        this.http.get<ApiResponse<ProductoApi[]>>(`${this.baseUrl}/productos`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
+  getProductos(): Observable<ProductoApi[]> {
+    const headers = this.createHeaders();
+    return this.http.get<ProductoApi[]>(`${this.baseUrl}/products`, { headers })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
    * Obtiene un producto por ID
    */
-  getProducto(id: number): Observable<ApiResponse<ProductoApi>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<ProductoApi>>(`${this.baseUrl}/productos/${id}`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
+  getProducto(id: number): Observable<ProductoApi> {
+    const headers = this.createHeaders();
+    return this.http.get<ProductoApi>(`${this.baseUrl}/products/${id}`, { headers })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
    * Crea un nuevo producto
    */
-  crearProducto(producto: Partial<ProductoApi>): Observable<ApiResponse<ProductoApi>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.post<ApiResponse<ProductoApi>>(`${this.baseUrl}/productos`, producto, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
+  crearProducto(producto: Partial<ProductoApi>): Observable<ProductoApi> {
+    const headers = this.createHeaders();
+    return this.http.post<ProductoApi>(`${this.baseUrl}/products`, producto, { headers })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
    * Actualiza un producto existente
    */
-  actualizarProducto(id: number, producto: Partial<ProductoApi>): Observable<ApiResponse<ProductoApi>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.put<ApiResponse<ProductoApi>>(`${this.baseUrl}/productos/${id}`, producto, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
+  actualizarProducto(id: number, producto: Partial<ProductoApi>): Observable<ProductoApi> {
+    const headers = this.createHeaders();
+    return this.http.put<ProductoApi>(`${this.baseUrl}/products/${id}`, producto, { headers })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
-   * Elimina un producto
+   * Actualiza el stock de un producto
    */
-  eliminarProducto(id: number): Observable<ApiResponse<void>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.delete<ApiResponse<void>>(`${this.baseUrl}/productos/${id}`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  /**
-   * Busca productos por término
-   */
-  buscarProductos(termino: string): Observable<ApiResponse<ProductoApi[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<ProductoApi[]>>(`${this.baseUrl}/productos/buscar?q=${encodeURIComponent(termino)}`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  /**
-   * Filtra productos por categoría
-   */
-  filtrarProductosPorCategoria(categoria: string): Observable<ApiResponse<ProductoApi[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<ProductoApi[]>>(`${this.baseUrl}/productos/categoria/${encodeURIComponent(categoria)}`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  // === MÉTODOS PARA MOVIMIENTOS DE STOCK ===
-
-  /**
-   * Obtiene todos los movimientos de stock
-   */
-  getMovimientos(): Observable<ApiResponse<MovimientoApi[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<MovimientoApi[]>>(`${this.baseUrl}/movimientos`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  /**
-   * Obtiene movimientos de un producto específico
-   */
-  getMovimientosProducto(productoId: number): Observable<ApiResponse<MovimientoApi[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<MovimientoApi[]>>(`${this.baseUrl}/movimientos/producto/${productoId}`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  /**
-   * Registra un nuevo movimiento de stock
-   */
-  registrarMovimiento(movimiento: Partial<MovimientoApi>): Observable<ApiResponse<MovimientoApi>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.post<ApiResponse<MovimientoApi>>(`${this.baseUrl}/movimientos`, movimiento, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  // === MÉTODOS PARA CATEGORÍAS ===
-
-  /**
-   * Obtiene todas las categorías disponibles
-   */
-  getCategorias(): Observable<ApiResponse<string[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<string[]>>(`${this.baseUrl}/categorias`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
-  }
-
-  // === MÉTODOS PARA REPORTES ===
-
-  /**
-   * Obtiene estadísticas del inventario
-   */
-  getEstadisticasInventario(): Observable<ApiResponse<any>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<any>>(`${this.baseUrl}/reportes/estadisticas`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
-    );
+  actualizarStock(id: number, quantityChanged: number): Observable<void> {
+    const request: InventoryUpdateRequest = { quantityChanged };
+    const headers = this.createHeaders();
+    return this.http.patch<void>(`${this.baseUrl}/products/${id}/stock`, request, { headers })
+      .pipe(catchError(this.handleError.bind(this)));
   }
 
   /**
    * Obtiene productos con stock bajo
    */
-  getProductosStockBajo(): Observable<ApiResponse<ProductoApi[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<ProductoApi[]>>(`${this.baseUrl}/reportes/stock-bajo`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
+  getProductosStockBajo(): Observable<ProductoApi[]> {
+    const headers = this.createHeaders();
+    return this.http.get<ProductoApi[]>(`${this.baseUrl}/low-stock`, { headers })
+      .pipe(catchError(this.handleError.bind(this)));
+  }
+
+  // === MÉTODOS NO DISPONIBLES EN INVENTORY SERVICE ===
+  // TODO: Implementar estos endpoints en el inventory service o remover del frontend
+
+  /**
+   * Busca productos por término - TODO: Implementar en inventory service
+   */
+  buscarProductos(termino: string): Observable<ProductoApi[]> {
+    // Fallback: filtrar localmente por ahora
+    return this.getProductos().pipe(
+      switchMap(productos => 
+        [productos.filter(p => 
+          p.name.toLowerCase().includes(termino.toLowerCase()) ||
+          p.description.toLowerCase().includes(termino.toLowerCase())
+        )]
       )
     );
   }
 
   /**
-   * Exporta inventario a CSV
+   * Filtra productos por categoría - TODO: Implementar en inventory service
    */
-  exportarInventario(): Observable<Blob> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get(`${this.baseUrl}/reportes/exportar-inventario`, { 
-          headers, 
-          responseType: 'blob' 
-        }).pipe(catchError(this.handleError.bind(this)))
+  filtrarProductosPorCategoria(categoria: string): Observable<ProductoApi[]> {
+    // Fallback: filtrar localmente por ahora
+    return this.getProductos().pipe(
+      switchMap(productos => 
+        [productos.filter(p => p.category === categoria)]
       )
     );
   }
 
-  // === MÉTODOS PARA PROVEEDORES ===
-
   /**
-   * Obtiene todos los proveedores
+   * Obtiene todas las categorías disponibles - TODO: Implementar en inventory service
    */
-  getProveedores(): Observable<ApiResponse<string[]>> {
-    return this.createAuthHeaders().pipe(
-      switchMap(headers =>
-        this.http.get<ApiResponse<string[]>>(`${this.baseUrl}/proveedores`, { headers })
-          .pipe(catchError(this.handleError.bind(this)))
-      )
+  getCategorias(): Observable<string[]> {
+    // Fallback: extraer categorías de productos existentes
+    return this.getProductos().pipe(
+      switchMap(productos => {
+        const categorias = [...new Set(productos.map(p => p.category))];
+        return [categorias];
+      })
     );
   }
 
   // === MÉTODOS UTILITARIOS ===
 
-  /**
-   * Verifica el estado de salud de la API
-   */
-  checkHealth(): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.baseUrl}/health`)
-      .pipe(catchError(this.handleError.bind(this)));
-  }
-
-  /**
-   * Obtiene información de la versión de la API
-   */
-  getVersion(): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.baseUrl}/version`)
-      .pipe(catchError(this.handleError.bind(this)));
-  }
+  // === MÉTODOS UTILITARIOS ===
+  // TODO: Implementar health check y version endpoints en inventory service si son necesarios
 }

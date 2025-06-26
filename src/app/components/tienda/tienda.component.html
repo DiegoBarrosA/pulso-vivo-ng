@@ -115,8 +115,8 @@
             <!-- Imagen del producto -->
             <div class="producto-imagen">
               <img 
-                [src]="producto.imagen" 
-                [alt]="producto.nombre"
+                [src]="producto.imagen || 'assets/images/producto-placeholder.jpg'" 
+                [alt]="producto.name || producto.nombre"
                 class="card-img-top"
                 (error)="$any($event.target).src = 'assets/images/producto-placeholder.jpg'">
               
@@ -137,17 +137,17 @@
             <!-- Contenido de la tarjeta -->
             <div class="card-body d-flex flex-column">
               <div class="categoria-tag">
-                <small class="text-muted">{{ producto.categoria }}</small>
+                <small class="text-muted">{{ producto.category || producto.categoria }}</small>
               </div>
               
-              <h5 class="card-title">{{ producto.nombre }}</h5>
-              <p class="card-text text-muted flex-grow-1">{{ producto.descripcion }}</p>
+              <h5 class="card-title">{{ producto.name || producto.nombre }}</h5>
+              <p class="card-text text-muted flex-grow-1">{{ producto.description || producto.descripcion }}</p>
               
               <div class="producto-info mt-auto">
                 <div class="precio-info mb-3">
-                  <span class="precio">{{ producto.precio | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
-                  <small class="text-muted ms-2" *ngIf="producto.enStock">
-                    ({{ producto.cantidadDisponible }} disponibles)
+                  <span class="precio">{{ (producto.precio || 0) | currency:'EUR':'symbol':'1.2-2':'es' }}</span>
+                  <small class="text-muted ms-2" *ngIf="producto.enStock || (producto.quantity || producto.cantidadDisponible || 0) > 0">
+                    ({{ producto.quantity || producto.cantidadDisponible }} disponibles)
                   </small>
                 </div>
                 

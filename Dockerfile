@@ -11,30 +11,56 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Accept build arguments for environment configuration
+ARG INVENTORY_SERVICE_URL=http://localhost:8081/api
+ARG AZURE_AD_CLIENT_ID=7549ac9c-9294-4bb3-98d6-752d12b13d81
+ARG AZURE_AD_AUTHORITY=https://PulsoVivo.b2clogin.com/PulsoVivo.onmicrosoft.com/B2C_1_pulso_vivo_register_and_login
+ARG AZURE_AD_REDIRECT_URI=http://localhost:4200
+ARG ENABLE_LOGGING=false
+
+# Set environment variables for build
+ENV INVENTORY_SERVICE_URL=$INVENTORY_SERVICE_URL
+ENV AZURE_AD_CLIENT_ID=$AZURE_AD_CLIENT_ID
+ENV AZURE_AD_AUTHORITY=$AZURE_AD_AUTHORITY
+ENV AZURE_AD_REDIRECT_URI=$AZURE_AD_REDIRECT_URI
+ENV ENABLE_LOGGING=$ENABLE_LOGGING
+
 # Build the application for production
 RUN npm run build
 
 # Production stage
-FROM docker.io/library/node:18-alpine
-WORKDIR /app
-
-# Install only production dependencies
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+FROM nginx:alpine
 
 # Copy built application from build stage
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/dist/pulso-vivo-ng/browser /usr/share/nginx/html
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S angular -u 1001
+# Copy nginx configuration for Angular SPA
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Set ownership
-RUN chown -R angular:nodejs /app
-USER angular
+# Create script to replace environment variables at runtime
+RUN echo '#!/bin/sh' > /docker-entrypoint.d/30-envsubst.sh && \
+    echo 'envsubst < /usr/share/nginx/html/assets/env.template.js > /usr/share/nginx/html/assets/env.js' >> /docker-entrypoint.d/30-envsubst.sh && \
+    chmod +x /docker-entrypoint.d/30-envsubst.sh
 
-# Expose port 4000 (default for Angular SSR)
-EXPOSE 4000
+# Create environment template file
+RUN mkdir -p /usr/share/nginx/html/assets && \
+    echo 'window.env = {' > /usr/share/nginx/html/assets/env.template.js && \
+    echo '  INVENTORY_SERVICE_URL: "${INVENTORY_SERVICE_URL}",' >> /usr/share/nginx/html/assets/env.template.js && \
+    echo '  AZURE_AD_CLIENT_ID: "${AZURE_AD_CLIENT_ID}",' >> /usr/share/nginx/html/assets/env.template.js && \
+    echo '  AZURE_AD_AUTHORITY: "${AZURE_AD_AUTHORITY}",' >> /usr/share/nginx/html/assets/env.template.js && \
+    echo '  AZURE_AD_REDIRECT_URI: "${AZURE_AD_REDIRECT_URI}",' >> /usr/share/nginx/html/assets/env.template.js && \
+    echo '  ENABLE_LOGGING: "${ENABLE_LOGGING}"' >> /usr/share/nginx/html/assets/env.template.js && \
+    echo '};' >> /usr/share/nginx/html/assets/env.template.js
 
-# Start the SSR server
-CMD ["npm", "run", "serve:ssr:pulso-vivo-ng"]
+# Set default environment variables
+ENV INVENTORY_SERVICE_URL=http://localhost:8081/api
+ENV AZURE_AD_CLIENT_ID=7549ac9c-9294-4bb3-98d6-752d12b13d81
+ENV AZURE_AD_AUTHORITY=https://PulsoVivo.b2clogin.com/PulsoVivo.onmicrosoft.com/B2C_1_pulso_vivo_register_and_login
+ENV AZURE_AD_REDIRECT_URI=http://localhost:4200
+ENV ENABLE_LOGGING=false
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

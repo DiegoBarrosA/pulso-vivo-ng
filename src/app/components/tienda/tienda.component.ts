@@ -2,17 +2,24 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { ApiService, ProductoApi } from '../../services/api.service';
 import { Observable } from 'rxjs';
 
 export interface ProductoMedico {
   id: number;
-  nombre: string;
-  descripcion: string;
-  precio: number;
-  categoria: string;
-  imagen: string;
-  enStock: boolean;
-  cantidadDisponible: number;
+  name: string;
+  description: string;
+  quantity: number;
+  category: string;
+  active: boolean;
+  // Legacy fields for display compatibility
+  nombre?: string;
+  descripcion?: string;
+  precio?: number;
+  categoria?: string;
+  imagen?: string;
+  enStock?: boolean;
+  cantidadDisponible?: number;
 }
 
 @Component({
@@ -30,24 +37,89 @@ export class TiendaComponent implements OnInit {
   terminoBusqueda: string = '';
   isAuthenticated$: Observable<boolean>;
 
-  // Productos de muestra para demostración
-  productosMuestra: ProductoMedico[] = [
-    {
-      id: 1,
-      nombre: 'Tensiómetro Digital',
-      descripcion: 'Tensiómetro automático de brazo con pantalla LCD',
-      precio: 89.99,
-      categoria: 'Equipos de Diagnóstico',
-      imagen: 'assets/images/tensiometro.jpg',
-      enStock: true,
-      cantidadDisponible: 15
-    },
-    {
-      id: 2,
-      nombre: 'Estetoscopio Profesional',
-      descripcion: 'Estetoscopio de doble campana para adultos',
-      precio: 45.50,
-      categoria: 'Equipos de Diagnóstico',
+  constructor(
+    private authService: AuthService,
+    private apiService: ApiService
+  ) {
+    this.isAuthenticated$ = this.authService.isAuthenticated$;
+  }
+
+  ngOnInit(): void {
+    this.cargarProductos();
+    this.cargarCategorias();
+  }
+
+  // === CARGA DE DATOS DESDE API ===
+  private cargarProductos(): void {
+    this.apiService.getProductos().subscribe({
+      next: (productos) => {
+        // Convert API products to display format with legacy field mapping
+        this.productos = productos
+          .filter(p => p.active) // Only show active products in store
+          .map(p => ({
+            ...p,
+            // Legacy field mappings for existing UI
+            nombre: p.name,
+            descripcion: p.description,
+            cantidadDisponible: p.quantity,
+            categoria: p.category,
+            enStock: p.quantity > 0,
+            // Default values for fields not in API
+            precio: 0, // Price not available in inventory service
+            imagen: 'assets/images/producto-placeholder.jpg'
+          }));
+        this.productosFiltrados = [...this.productos];
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+        this.cargarProductosMuestra(); // Fallback to sample data
+      }
+    });
+  }
+
+  private cargarCategorias(): void {
+    this.apiService.getCategorias().subscribe({
+      next: (categorias) => {
+        this.categorias = categorias;
+      },
+      error: (error) => {
+        console.error('Error loading categories:', error);
+        this.extraerCategorias(); // Fallback to extracting from products
+      }
+    });
+  }
+
+  // === DATOS DE MUESTRA (FALLBACK) ===
+  private cargarProductosMuestra(): void {
+    const productosMuestra: ProductoMedico[] = [
+      {
+        id: 1,
+        name: 'Tensiómetro Digital',
+        description: 'Tensiómetro automático de brazo con pantalla LCD',
+        quantity: 15,
+        category: 'Equipos de Diagnóstico',
+        active: true,
+        // Legacy mappings
+        nombre: 'Tensiómetro Digital',
+        descripcion: 'Tensiómetro automático de brazo con pantalla LCD',
+        precio: 89.99,
+        categoria: 'Equipos de Diagnóstico',
+        imagen: 'assets/images/tensiometro.jpg',
+        enStock: true,
+        cantidadDisponible: 15
+      },
+      {
+        id: 2,
+        name: 'Estetoscopio Profesional',
+        description: 'Estetoscopio de doble campana para adultos',
+        quantity: 8,
+        category: 'Equipos de Diagnóstico',
+        active: true,
+        // Legacy mappings
+        nombre: 'Estetoscopio Profesional',
+        descripcion: 'Estetoscopio de doble campana para adultos',
+        precio: 45.50,
+        categoria: 'Equipos de Diagnóstico',
       imagen: 'assets/images/estetoscopio.jpg',
       enStock: true,
       cantidadDisponible: 8
@@ -129,8 +201,8 @@ export class TiendaComponent implements OnInit {
     this.productosFiltrados = [...this.productos];
   }
 
-  extraerCategorias(): void {
-    this.categorias = [...new Set(this.productos.map(p => p.categoria))];
+  private extraerCategorias(): void {
+    this.categorias = [...new Set(this.productos.map(p => p.category || p.categoria || ''))];
   }
 
   filtrarPorCategoria(categoria: string): void {
@@ -138,8 +210,10 @@ export class TiendaComponent implements OnInit {
     this.aplicarFiltros();
   }
 
-  buscarProductos(termino: string): void {
-    this.terminoBusqueda = termino.toLowerCase();
+  buscarProductos(termino?: string): void {
+    if (termino !== undefined) {
+      this.terminoBusqueda = termino.toLowerCase();
+    }
     this.aplicarFiltros();
   }
 
@@ -149,15 +223,15 @@ export class TiendaComponent implements OnInit {
     // Filtrar por categoría
     if (this.categoriaSeleccionada) {
       productosFiltrados = productosFiltrados.filter(
-        p => p.categoria === this.categoriaSeleccionada
+        p => (p.category || p.categoria) === this.categoriaSeleccionada
       );
     }
 
     // Filtrar por término de búsqueda
     if (this.terminoBusqueda) {
       productosFiltrados = productosFiltrados.filter(
-        p => p.nombre.toLowerCase().includes(this.terminoBusqueda) ||
-             p.descripcion.toLowerCase().includes(this.terminoBusqueda)
+        p => (p.name || p.nombre || '').toLowerCase().includes(this.terminoBusqueda) ||
+             (p.description || p.descripcion || '').toLowerCase().includes(this.terminoBusqueda)
       );
     }
 
@@ -171,14 +245,19 @@ export class TiendaComponent implements OnInit {
   }
 
   agregarAlCarrito(producto: ProductoMedico): void {
-    if (producto.enStock && producto.cantidadDisponible > 0) {
-      console.log('Producto agregado al carrito:', producto.nombre);
+    const enStock = producto.enStock || (producto.quantity || producto.cantidadDisponible || 0) > 0;
+    const cantidad = producto.cantidadDisponible || producto.quantity || 0;
+    
+    if (enStock && cantidad > 0) {
+      const nombre = producto.name || producto.nombre || 'Producto';
+      console.log('Producto agregado al carrito:', nombre);
       // Implementar lógica del carrito aquí
     }
   }
 
   verDetalle(producto: ProductoMedico): void {
-    console.log('Ver detalle del producto:', producto.nombre);
+    const nombre = producto.name || producto.nombre || 'Producto';
+    console.log('Ver detalle del producto:', nombre);
     // Implementar navegación a detalle del producto
   }
 

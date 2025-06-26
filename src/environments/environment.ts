@@ -25,9 +25,9 @@ export const environment = {
     ],
   },
 
-  // Configuración del BFF API
+  // Configuración del API (Inventory Service)
   api: {
-    baseUrl: "https://your-bff-api-domain.com/api", // Reemplazar con la URL de tu BFF
+    baseUrl: process.env['INVENTORY_SERVICE_URL'] || "http://localhost:8081/api", // URL del pulso-vivo-inventory-service
     timeout: 30000, // 30 segundos
     retryAttempts: 3,
     bffScopes: ["https://PulsoVivo.onmicrosoft.com/pulso-vivo-api/access", "openid", "profile"], // B2C API scopes

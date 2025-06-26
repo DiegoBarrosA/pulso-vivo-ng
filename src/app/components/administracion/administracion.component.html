@@ -213,24 +213,24 @@
                   <td>{{ producto.id }}</td>
                   <td>
                     <div class="producto-info">
-                      <strong>{{ producto.nombre }}</strong>
-                      <small class="d-block text-muted">{{ producto.descripcion }}</small>
+                      <strong>{{ producto.name || producto.nombre }}</strong>
+                      <small class="d-block text-muted">{{ producto.description || producto.descripcion }}</small>
                     </div>
                   </td>
                   <td>
-                    <span class="badge bg-secondary">{{ producto.categoria }}</span>
+                    <span class="badge bg-secondary">{{ producto.category || producto.categoria }}</span>
                   </td>
                   <td>
                     <span [class]="getClaseEstado(getEstadoStock(producto))">
-                      {{ producto.cantidadStock }}
+                      {{ producto.quantity || producto.cantidadStock }}
                     </span>
                   </td>
-                  <td>{{ producto.stockMinimo }}</td>
-                  <td>{{ producto.precio | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
-                  <td>{{ producto.proveedor }}</td>
+                  <td>{{ producto.stockMinimo || 5 }}</td>
+                  <td>{{ (producto.precio || 0) | currency:'EUR':'symbol':'1.2-2':'es' }}</td>
+                  <td>{{ producto.proveedor || 'N/A' }}</td>
                   <td>
-                    <span class="badge" [class.bg-success]="producto.activo" [class.bg-danger]="!producto.activo">
-                      {{ producto.activo ? 'Activo' : 'Inactivo' }}
+                    <span class="badge" [class.bg-success]="producto.active || producto.activo" [class.bg-danger]="!(producto.active || producto.activo)">
+                      {{ (producto.active || producto.activo) ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
                   <td>{{ formatearFecha(producto.fechaActualizacion) }}</td>
@@ -251,8 +251,8 @@
                       <button 
                         class="btn btn-outline-warning" 
                         (click)="toggleEstadoProducto(producto)"
-                        [title]="producto.activo ? 'Desactivar' : 'Activar'">
-                        <i [class]="producto.activo ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                        [title]="(producto.active || producto.activo) ? 'Desactivar' : 'Activar'">
+                        <i [class]="(producto.active || producto.activo) ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
                       </button>
                       <button 
                         class="btn btn-outline-danger" 
@@ -350,7 +350,7 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Nombre del Producto *</label>
-              <input type="text" class="form-control" [(ngModel)]="formularioProducto.nombre" name="nombre" required>
+              <input type="text" class="form-control" [(ngModel)]="formularioProducto.name" name="name" required>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Categoría *</label>
@@ -358,7 +358,7 @@
             </div>
             <div class="col-12 mb-3">
               <label class="form-label">Descripción</label>
-              <textarea class="form-control" rows="3" [(ngModel)]="formularioProducto.descripcion" name="descripcion"></textarea>
+              <textarea class="form-control" rows="3" [(ngModel)]="formularioProducto.description" name="description"></textarea>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Precio (€) *</label>
@@ -366,20 +366,22 @@
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Stock Actual *</label>
-              <input type="number" class="form-control" [(ngModel)]="formularioProducto.cantidadStock" name="cantidadStock" required>
+              <input type="number" class="form-control" [(ngModel)]="formularioProducto.quantity" name="quantity" required>
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">Stock Mínimo *</label>
-              <input type="number" class="form-control" [(ngModel)]="formularioProducto.stockMinimo" name="stockMinimo" required>
+              <input type="number" class="form-control" value="5" readonly disabled>
+              <small class="form-text text-muted">Valor fijo en el sistema de inventario</small>
             </div>
             <div class="col-md-8 mb-3">
               <label class="form-label">Proveedor</label>
-              <input type="text" class="form-control" [(ngModel)]="formularioProducto.proveedor" name="proveedor">
+              <input type="text" class="form-control" value="N/A" readonly disabled>
+              <small class="form-text text-muted">Campo no disponible en el sistema de inventario</small>
             </div>
             <div class="col-md-4 mb-3">
               <div class="form-check mt-4">
-                <input class="form-check-input" type="checkbox" [(ngModel)]="formularioProducto.activo" name="activo" id="activo">
-                <label class="form-check-label" for="activo">
+                <input class="form-check-input" type="checkbox" [(ngModel)]="formularioProducto.active" name="active" id="active">
+                <label class="form-check-label" for="active">
                   Producto Activo
                 </label>
               </div>
@@ -407,13 +409,13 @@
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="bi bi-arrow-left-right"></i>
-          Movimiento de Stock - {{ productoSeleccionado?.nombre }}
+          Movimiento de Stock - {{ productoSeleccionado?.name || productoSeleccionado?.nombre }}
         </h5>
         <button type="button" class="btn-close" (click)="cerrarModal()"></button>
       </div>
       <div class="modal-body">
         <div class="alert alert-info">
-          <strong>Stock Actual:</strong> {{ productoSeleccionado?.cantidadStock }} unidades
+          <strong>Stock Actual:</strong> {{ productoSeleccionado?.quantity || productoSeleccionado?.cantidadStock }} unidades
         </div>
         
         <form>
