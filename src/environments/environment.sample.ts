@@ -6,8 +6,8 @@ export const environment = {
   azureAd: {
     clientId: 'REEMPLAZAR_CON_TU_CLIENT_ID', // Client ID de tu aplicación en Azure AD
     authority: 'https://login.microsoftonline.com/REEMPLAZAR_CON_TU_TENANT_ID', // Tenant ID de tu organización
-    redirectUri: 'http://localhost:4200', // URL de redirección después del login
-    postLogoutRedirectUri: 'http://localhost:4200', // URL de redirección después del logout
+    redirectUri: 'http://localhost:4000', // URL de redirección después del login
+    postLogoutRedirectUri: 'http://localhost:4000', // URL de redirección después del logout
     scopes: ['user.read'] // Permisos que solicita la aplicación
   },
   

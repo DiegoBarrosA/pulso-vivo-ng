@@ -1,12 +1,12 @@
 export const environment = {
   production: false,
 
-  // Configuración de Azure AD B2C
+  // Configuración de Azure AD B2C para desarrollo
   azureAd: {
     clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81", // Tu Client ID de B2C
     authority:
       "https://PulsoVivo.b2clogin.com/PulsoVivo.onmicrosoft.com/B2C_1_pulso_vivo_register_and_login", // B2C tenant y policy correctos
-    redirectUri: "http://localhost:4000",
+    redirectUri: "http://localhost:4000", // Updated to use port 4000
     postLogoutRedirectUri: "http://localhost:4000",
     scopes: ["openid", "profile"], // B2C scopes básicos
     // Configuraciones específicas para B2C
@@ -25,7 +25,7 @@ export const environment = {
     ],
   },
 
-  // Configuración del API (Inventory Service)
+  // Configuración del API (usando proxy local para evitar CORS)
   api: {
     baseUrl: "/api", // Use proxy for development to avoid CORS issues
     timeout: 30000, // 30 segundos
@@ -37,13 +37,13 @@ export const environment = {
     ], // B2C API scopes
   },
 
-  // Configuraciones de la aplicación
+  // Configuraciones de la aplicación para desarrollo
   app: {
-    name: "PulsoVivo",
-    version: "1.0.0",
+    name: "PulsoVivo (Development)",
+    version: "1.0.0-dev",
     companyName: "PulsoVivo Medical Supplies",
     supportEmail: "soporte@pulsovivo.com",
-    enableLogging: true,
+    enableLogging: true, // Enable detailed logging in development
     logLevel: "debug", // 'debug' | 'info' | 'warn' | 'error'
   },
 
@@ -60,10 +60,10 @@ export const environment = {
 
   // Configuraciones de administración
   admin: {
-    autoSaveInterval: 30000, // 30 segundos
+    autoSaveInterval: 10000, // 10 segundos para desarrollo (más rápido)
     exportFormats: ["csv", "excel", "pdf"],
     enableAuditLog: true,
-    sessionTimeout: 3600000, // 1 hora en milisegundos
+    sessionTimeout: 7200000, // 2 horas para desarrollo (más tiempo)
     maxFileUploadSize: 10485760, // 10MB
   },
 
@@ -75,13 +75,24 @@ export const environment = {
     privacyUrl: "https://pulsovivo.com/privacidad",
   },
 
-  // Configuraciones de características
+  // Configuraciones de características para desarrollo
   features: {
     enableReports: true,
     enableNotifications: true,
-    enableDarkMode: false,
+    enableDarkMode: true, // Enable for testing
     enableMultiLanguage: false,
     enableOfflineMode: false,
     enablePushNotifications: false,
+    enableDebugMode: true, // Development-specific
+    enableMockData: true, // Use mock data when API is unavailable
+  },
+
+  // Configuraciones específicas para desarrollo
+  development: {
+    enableHotReload: true,
+    enableSourceMaps: true,
+    enableConsoleLogging: true,
+    mockApiDelay: 500, // Simulate API delay in milliseconds
+    enablePerformanceMonitoring: true,
   },
 };

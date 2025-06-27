@@ -1,12 +1,12 @@
 export const environment = {
-  production: false,
+  production: true,
 
-  // Configuración de Azure AD B2C
+  // Configuración de Azure AD B2C para Docker
   azureAd: {
     clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81", // Tu Client ID de B2C
     authority:
       "https://PulsoVivo.b2clogin.com/PulsoVivo.onmicrosoft.com/B2C_1_pulso_vivo_register_and_login", // B2C tenant y policy correctos
-    redirectUri: "http://localhost:4000",
+    redirectUri: "http://localhost:4000", // Docker port
     postLogoutRedirectUri: "http://localhost:4000",
     scopes: ["openid", "profile"], // B2C scopes básicos
     // Configuraciones específicas para B2C
@@ -25,26 +25,26 @@ export const environment = {
     ],
   },
 
-  // Configuración del API (Inventory Service)
+  // Configuración del API (usando proxy nginx para evitar CORS)
   api: {
-    baseUrl: "/api", // Use proxy for development to avoid CORS issues
+    baseUrl: "/api", // Use nginx proxy for Docker deployment
     timeout: 30000, // 30 segundos
     retryAttempts: 3,
     bffScopes: [
-      "https://PulsoVivo.onmicrosoft.com/pulso-vivo-api/access",
       "openid",
       "profile",
-    ], // B2C API scopes
+      "offline_access"
+    ], // B2C API scopes - simplified for initial testing
   },
 
-  // Configuraciones de la aplicación
+  // Configuraciones de la aplicación para Docker
   app: {
-    name: "PulsoVivo",
+    name: "PulsoVivo (Docker)",
     version: "1.0.0",
     companyName: "PulsoVivo Medical Supplies",
     supportEmail: "soporte@pulsovivo.com",
-    enableLogging: true,
-    logLevel: "debug", // 'debug' | 'info' | 'warn' | 'error'
+    enableLogging: true, // Enable logging for Docker debugging
+    logLevel: "info", // More verbose logging for Docker environment
   },
 
   // Configuraciones de la tienda
@@ -60,10 +60,10 @@ export const environment = {
 
   // Configuraciones de administración
   admin: {
-    autoSaveInterval: 30000, // 30 segundos
+    autoSaveInterval: 30000, // 30 segundos para Docker (balance entre dev y prod)
     exportFormats: ["csv", "excel", "pdf"],
     enableAuditLog: true,
-    sessionTimeout: 3600000, // 1 hora en milisegundos
+    sessionTimeout: 7200000, // 2 horas para Docker
     maxFileUploadSize: 10485760, // 10MB
   },
 
@@ -75,13 +75,29 @@ export const environment = {
     privacyUrl: "https://pulsovivo.com/privacidad",
   },
 
-  // Configuraciones de características
+  // Configuraciones de características para Docker
   features: {
     enableReports: true,
     enableNotifications: true,
-    enableDarkMode: false,
+    enableDarkMode: true,
     enableMultiLanguage: false,
     enableOfflineMode: false,
     enablePushNotifications: false,
+    enableDebugMode: true, // Enable debug mode for Docker debugging
+    enableMockData: false, // Use real API in Docker
+  },
+
+  // Configuraciones específicas para Docker
+  docker: {
+    enableServiceWorker: false, // Disable for easier debugging
+    enableCompression: true,
+    enableCaching: true,
+    enableAnalytics: false, // Disable for local Docker
+    enableErrorReporting: true,
+    enablePerformanceMonitoring: true,
+    minifyAssets: true,
+    enableSecurityHeaders: true,
+    nginxProxy: true, // Indicates we're using nginx proxy
+    apiProxyPath: "/api", // Path that nginx will proxy
   },
 };

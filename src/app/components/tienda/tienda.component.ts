@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, inject, AfterViewInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { ApiService, ProductoApi } from '../../services/api.service';
@@ -29,13 +29,18 @@ export interface ProductoMedico {
   templateUrl: './tienda.component.html',
   styleUrls: ['./tienda.component.less']
 })
-export class TiendaComponent implements OnInit {
+export class TiendaComponent implements OnInit, AfterViewInit {
   productos: ProductoMedico[] = [];
   productosFiltrados: ProductoMedico[] = [];
   categorias: string[] = [];
   categoriaSeleccionada: string = '';
   terminoBusqueda: string = '';
+  // Propiedades para autenticación
   isAuthenticated$: Observable<boolean>;
+  
+  // Platform detection for SSR
+  private platformId = inject(PLATFORM_ID);
+  private isBrowser = isPlatformBrowser(this.platformId);
 
   constructor(
     private authService: AuthService,
@@ -45,8 +50,19 @@ export class TiendaComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.cargarProductos();
-    this.cargarCategorias();
+    // Load sample data immediately for SSR
+    if (!this.isBrowser) {
+      this.cargarProductosMuestra();
+      this.extraerCategorias();
+    }
+  }
+
+  ngAfterViewInit(): void {
+    // Load real data only in browser after view initialization
+    if (this.isBrowser) {
+      this.cargarProductos();
+      this.cargarCategorias();
+    }
   }
 
   // === CARGA DE DATOS DESDE API ===
@@ -78,6 +94,11 @@ export class TiendaComponent implements OnInit {
   }
 
   private cargarCategorias(): void {
+    // Skip API calls during SSR
+    if (!this.isBrowser) {
+      return;
+    }
+
     this.apiService.getCategorias().subscribe({
       next: (categorias) => {
         this.categorias = categorias;
@@ -120,85 +141,111 @@ export class TiendaComponent implements OnInit {
         descripcion: 'Estetoscopio de doble campana para adultos',
         precio: 45.50,
         categoria: 'Equipos de Diagnóstico',
-      imagen: 'assets/images/estetoscopio.jpg',
-      enStock: true,
-      cantidadDisponible: 8
-    },
-    {
-      id: 3,
-      nombre: 'Termómetro Infrarrojo',
-      descripcion: 'Termómetro sin contacto para frente',
-      precio: 25.99,
-      categoria: 'Equipos de Diagnóstico',
-      imagen: 'assets/images/termometro.jpg',
-      enStock: false,
-      cantidadDisponible: 0
-    },
-    {
-      id: 4,
-      nombre: 'Guantes de Nitrilo (100 unidades)',
-      descripcion: 'Guantes desechables sin polvo, talla M',
-      precio: 12.99,
-      categoria: 'Suministros Desechables',
-      imagen: 'assets/images/guantes.jpg',
-      enStock: true,
-      cantidadDisponible: 50
-    },
-    {
-      id: 5,
-      nombre: 'Mascarillas Quirúrgicas (50 unidades)',
-      descripcion: 'Mascarillas desechables de 3 capas',
-      precio: 8.99,
-      categoria: 'Suministros Desechables',
-      imagen: 'assets/images/mascarillas.jpg',
-      enStock: true,
-      cantidadDisponible: 100
-    },
-    {
-      id: 6,
-      nombre: 'Jeringuillas Desechables (100 unidades)',
-      descripcion: 'Jeringuillas de 5ml con aguja',
-      precio: 15.99,
-      categoria: 'Suministros Desechables',
-      imagen: 'assets/images/jeringuillas.jpg',
-      enStock: true,
-      cantidadDisponible: 25
-    },
-    {
-      id: 7,
-      nombre: 'Camilla Plegable',
-      descripcion: 'Camilla de aluminio ligera y resistente',
-      precio: 299.99,
-      categoria: 'Mobiliario Médico',
-      imagen: 'assets/images/camilla.jpg',
-      enStock: true,
-      cantidadDisponible: 3
-    },
-    {
-      id: 8,
-      nombre: 'Silla de Ruedas Estándar',
-      descripcion: 'Silla de ruedas manual con frenos',
-      precio: 179.99,
-      categoria: 'Mobiliario Médico',
-      imagen: 'assets/images/silla-ruedas.jpg',
-      enStock: true,
-      cantidadDisponible: 5
-    }
-  ];
+        imagen: 'assets/images/estetoscopio.jpg',
+        enStock: true,
+        cantidadDisponible: 8
+      },
+      {
+        id: 3,
+        name: 'Termómetro Infrarrojo',
+        description: 'Termómetro sin contacto para frente',
+        quantity: 0,
+        category: 'Equipos de Diagnóstico',
+        active: true,
+        // Legacy mappings
+        nombre: 'Termómetro Infrarrojo',
+        descripcion: 'Termómetro sin contacto para frente',
+        precio: 25.99,
+        categoria: 'Equipos de Diagnóstico',
+        imagen: 'assets/images/termometro.jpg',
+        enStock: false,
+        cantidadDisponible: 0
+      },
+      {
+        id: 4,
+        name: 'Guantes de Nitrilo (100 unidades)',
+        description: 'Guantes desechables sin polvo, talla M',
+        quantity: 50,
+        category: 'Suministros Desechables',
+        active: true,
+        // Legacy mappings
+        nombre: 'Guantes de Nitrilo (100 unidades)',
+        descripcion: 'Guantes desechables sin polvo, talla M',
+        precio: 12.99,
+        categoria: 'Suministros Desechables',
+        imagen: 'assets/images/guantes.jpg',
+        enStock: true,
+        cantidadDisponible: 50
+      },
+      {
+        id: 5,
+        name: 'Mascarillas Quirúrgicas (50 unidades)',
+        description: 'Mascarillas desechables de 3 capas',
+        quantity: 100,
+        category: 'Suministros Desechables',
+        active: true,
+        // Legacy mappings
+        nombre: 'Mascarillas Quirúrgicas (50 unidades)',
+        descripcion: 'Mascarillas desechables de 3 capas',
+        precio: 8.99,
+        categoria: 'Suministros Desechables',
+        imagen: 'assets/images/mascarillas.jpg',
+        enStock: true,
+        cantidadDisponible: 100
+      },
+      {
+        id: 6,
+        name: 'Jeringuillas Desechables (100 unidades)',
+        description: 'Jeringuillas de 5ml con aguja',
+        quantity: 25,
+        category: 'Suministros Desechables',
+        active: true,
+        // Legacy mappings
+        nombre: 'Jeringuillas Desechables (100 unidades)',
+        descripcion: 'Jeringuillas de 5ml con aguja',
+        precio: 15.99,
+        categoria: 'Suministros Desechables',
+        imagen: 'assets/images/jeringuillas.jpg',
+        enStock: true,
+        cantidadDisponible: 25
+      },
+      {
+        id: 7,
+        name: 'Camilla Plegable',
+        description: 'Camilla de aluminio ligera y resistente',
+        quantity: 3,
+        category: 'Mobiliario Médico',
+        active: true,
+        // Legacy mappings
+        nombre: 'Camilla Plegable',
+        descripcion: 'Camilla de aluminio ligera y resistente',
+        precio: 299.99,
+        categoria: 'Mobiliario Médico',
+        imagen: 'assets/images/camilla.jpg',
+        enStock: true,
+        cantidadDisponible: 3
+      },
+      {
+        id: 8,
+        name: 'Silla de Ruedas Estándar',
+        description: 'Silla de ruedas manual con frenos',
+        quantity: 5,
+        category: 'Mobiliario Médico',
+        active: true,
+        // Legacy mappings
+        nombre: 'Silla de Ruedas Estándar',
+        descripcion: 'Silla de ruedas manual con frenos',
+        precio: 179.99,
+        categoria: 'Mobiliario Médico',
+        imagen: 'assets/images/silla-ruedas.jpg',
+        enStock: true,
+        cantidadDisponible: 5
+      }
+    ];
 
-  constructor(private authService: AuthService) {
-    this.isAuthenticated$ = this.authService.isAuthenticated$;
-  }
-
-  ngOnInit(): void {
-    this.cargarProductos();
-    this.extraerCategorias();
-  }
-
-  cargarProductos(): void {
-    // En una aplicación real, esto vendría de una API
-    this.productos = this.productosMuestra;
+    this.productos = productosMuestra;
     this.productosFiltrados = [...this.productos];
+    this.extraerCategorias();
   }
 
   private extraerCategorias(): void {

@@ -10,8 +10,8 @@ export const environment = {
     authority: "https://your-tenant-name.b2clogin.com/your-tenant-name.onmicrosoft.com/B2C_1_signupsignin",
     
     // Redirect URIs
-    redirectUri: "http://localhost:4200",
-    postLogoutRedirectUri: "http://localhost:4200",
+    redirectUri: "http://localhost:4000",
+    postLogoutRedirectUri: "http://localhost:4000",
     
     // B2C Scopes - Format: https://{tenant-name}.onmicrosoft.com/{api-name}/{scope}
     scopes: [

@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, inject, AfterViewInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
@@ -42,7 +42,7 @@ export interface MovimientoStock {
   templateUrl: './administracion.component.html',
   styleUrls: ['./administracion.component.less']
 })
-export class AdministracionComponent implements OnInit {
+export class AdministracionComponent implements OnInit, AfterViewInit {
   // Estado del componente
   vistaActual: 'inventario' | 'movimientos' | 'reportes' = 'inventario';
   
@@ -91,14 +91,29 @@ export class AdministracionComponent implements OnInit {
     valorInventario: 0
   };
 
+  // Platform detection for SSR
+  private platformId = inject(PLATFORM_ID);
+  private isBrowser = isPlatformBrowser(this.platformId);
+
   constructor(
     private authService: AuthService,
     private apiService: ApiService
   ) {}
 
   ngOnInit(): void {
-    this.cargarProductos();
-    this.cargarCategorias();
+    // Load sample data immediately for SSR
+    if (!this.isBrowser) {
+      this.cargarDatosMuestra();
+    }
+  }
+
+  ngAfterViewInit(): void {
+    // Load real data only in browser after view initialization
+    if (this.isBrowser) {
+      this.cargarProductos();
+      this.cargarCategorias();
+      this.cargarMovimientos();
+    }
   }
 
   // === CARGA DE DATOS DESDE API ===
@@ -131,15 +146,31 @@ export class AdministracionComponent implements OnInit {
   }
 
   private cargarCategorias(): void {
+    // Skip API calls during SSR
+    if (!this.isBrowser) {
+      return;
+    }
+
     this.apiService.getCategorias().subscribe({
       next: (categorias) => {
         this.categorias = categorias;
       },
       error: (error) => {
         console.error('Error loading categories:', error);
-        this.extraerCategorias(); // Fallback to extracting from products
+        this.categorias = ['Equipos de Diagnóstico', 'Suministros Desechables', 'Mobiliario Médico'];
       }
     });
+  }
+
+  private cargarMovimientos(): void {
+    // Skip API calls during SSR
+    if (!this.isBrowser) {
+      return;
+    }
+
+    // TODO: Implement movements API endpoint
+    // For now, generate mock movement data
+    this.cargarMovimientosMuestra();
   }
 
   // === DATOS DE MUESTRA (FALLBACK) ===
@@ -157,7 +188,7 @@ export class AdministracionComponent implements OnInit {
         descripcion: 'Tensiómetro automático de brazo con pantalla LCD',
         cantidadStock: 15,
         precio: 89.99,
-        categoria: 'Equipos de Diagnóstico',
+
         stockMinimo: 5,
         proveedor: 'MedTech Solutions',
         fechaActualizacion: new Date('2024-01-15'),
@@ -175,7 +206,7 @@ export class AdministracionComponent implements OnInit {
         descripcion: 'Estetoscopio de doble campana para adultos',
         cantidadStock: 8,
         precio: 45.50,
-        categoria: 'Equipos de Diagnóstico',
+
         stockMinimo: 10,
         proveedor: 'Medical Instruments Co.',
         fechaActualizacion: new Date('2024-01-10'),
@@ -193,7 +224,7 @@ export class AdministracionComponent implements OnInit {
         descripcion: 'Termómetro sin contacto para frente',
         cantidadStock: 0,
         precio: 25.99,
-        categoria: 'Equipos de Diagnóstico',
+
         stockMinimo: 5,
         proveedor: 'ThermoTech',
         fechaActualizacion: new Date('2024-01-12'),
@@ -244,7 +275,7 @@ export class AdministracionComponent implements OnInit {
 
   // === GESTIÓN DE INVENTARIO ===
   private extraerCategorias(): void {
-    this.categorias = [...new Set(this.productos.map(p => p.category || p.categoria || ''))];
+    this.categorias = [...new Set(this.productos.map(p => p.category || ''))];
   }
 
   private calcularEstadisticas(): void {
@@ -282,7 +313,7 @@ export class AdministracionComponent implements OnInit {
 
     // Filtro por categoría
     if (this.categoriaFiltro) {
-      productosFiltrados = productosFiltrados.filter(p => (p.category || p.categoria) === this.categoriaFiltro);
+      productosFiltrados = productosFiltrados.filter(p => p.category === this.categoriaFiltro);
     }
 
     // Filtro por estado
@@ -361,7 +392,7 @@ export class AdministracionComponent implements OnInit {
       name: this.formularioProducto.name || this.formularioProducto.nombre || '',
       description: this.formularioProducto.description || this.formularioProducto.descripcion || '',
       quantity: this.formularioProducto.quantity || this.formularioProducto.cantidadStock || 0,
-      category: this.formularioProducto.category || this.formularioProducto.categoria || '',
+      category: this.formularioProducto.category || '',
       active: this.formularioProducto.active !== undefined ? this.formularioProducto.active : this.formularioProducto.activo || true
     };
 
@@ -374,14 +405,17 @@ export class AdministracionComponent implements OnInit {
           console.error('Error creating product:', error);
           // Fallback to local creation
           const nuevoProducto: ProductoStock = {
-            ...productoData,
             id: Math.max(...this.productos.map(p => p.id)) + 1,
+            name: productoData.name || '',
+            description: productoData.description || '',
+            quantity: productoData.quantity || 0,
+            category: productoData.category || '',
+            active: productoData.active || true,
             // Legacy mappings
-            nombre: productoData.name,
-            descripcion: productoData.description,
-            cantidadStock: productoData.quantity,
-            categoria: productoData.category,
-            activo: productoData.active,
+            nombre: productoData.name || '',
+            descripcion: productoData.description || '',
+            cantidadStock: productoData.quantity || 0,
+            activo: productoData.active || true,
             fechaActualizacion: new Date()
           };
           this.productos.push(nuevoProducto);
@@ -401,13 +435,16 @@ export class AdministracionComponent implements OnInit {
           if (index !== -1) {
             this.productos[index] = {
               ...this.productos[index],
-              ...productoData,
+              name: productoData.name || this.productos[index].name,
+              description: productoData.description || this.productos[index].description,
+              quantity: productoData.quantity !== undefined ? productoData.quantity : this.productos[index].quantity,
+              category: productoData.category || this.productos[index].category,
+              active: productoData.active !== undefined ? productoData.active : this.productos[index].active,
               // Legacy mappings
-              nombre: productoData.name,
-              descripcion: productoData.description,
-              cantidadStock: productoData.quantity,
-              categoria: productoData.category,
-              activo: productoData.active,
+              nombre: productoData.name || this.productos[index].name,
+              descripcion: productoData.description || this.productos[index].description,
+              cantidadStock: productoData.quantity !== undefined ? productoData.quantity : this.productos[index].quantity,
+              activo: productoData.active !== undefined ? productoData.active : this.productos[index].active,
               fechaActualizacion: new Date()
             };
           }
@@ -475,6 +512,42 @@ export class AdministracionComponent implements OnInit {
     });
   }
 
+  private cargarMovimientosMuestra(): void {
+    // Generate sample movements data
+    this.movimientos = [
+      {
+        id: 1,
+        productoId: 1,
+        productoNombre: 'Tensiómetro Digital',
+        tipo: 'entrada',
+        cantidad: 10,
+        motivo: 'Compra proveedor',
+        fecha: new Date(2024, 0, 15),
+        usuario: 'admin@pulsovivo.com'
+      },
+      {
+        id: 2,
+        productoId: 2,
+        productoNombre: 'Estetoscopio Profesional',
+        tipo: 'salida',
+        cantidad: 2,
+        motivo: 'Venta cliente',
+        fecha: new Date(2024, 0, 16),
+        usuario: 'vendedor@pulsovivo.com'
+      },
+      {
+        id: 3,
+        productoId: 4,
+        productoNombre: 'Guantes Desechables',
+        tipo: 'entrada',
+        cantidad: 25,
+        motivo: 'Restock',
+        fecha: new Date(2024, 0, 17),
+        usuario: 'admin@pulsovivo.com'
+      }
+    ];
+  }
+
   // === MOVIMIENTOS DE STOCK ===
   registrarMovimiento(): void {
     if (!this.productoSeleccionado) return;
@@ -482,7 +555,7 @@ export class AdministracionComponent implements OnInit {
     const nuevoMovimiento: MovimientoStock = {
       id: Math.max(...this.movimientos.map(m => m.id)) + 1,
       productoId: this.productoSeleccionado.id,
-      productoNombre: this.productoSeleccionado.nombre,
+      productoNombre: this.productoSeleccionado.nombre || this.productoSeleccionado.name || '',
       tipo: this.formularioMovimiento.tipo,
       cantidad: this.formularioMovimiento.cantidad,
       motivo: this.formularioMovimiento.motivo,

@@ -1,6 +1,6 @@
 import { ApplicationConfig, provideZoneChangeDetection, PLATFORM_ID, inject, LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi, withFetch } from '@angular/common/http';
 import { isPlatformBrowser, registerLocaleData } from '@angular/common';
 import { BrowserCacheLocation, IPublicClientApplication, InteractionType, PublicClientApplication } from '@azure/msal-browser';
 import { MsalService, MSAL_INSTANCE, MSAL_GUARD_CONFIG, MSAL_INTERCEPTOR_CONFIG, MsalGuardConfiguration, MsalInterceptorConfiguration, MsalInterceptor } from '@azure/msal-angular';
@@ -53,25 +53,11 @@ export function MSALInstanceFactory(): IPublicClientApplication {
         }
       });
       
-      // Initialize immediately with B2C-specific error handling
-      msalInstance.initialize().then(() => {
-        console.log('[MSAL] Instance initialized successfully');
-        
-        // Handle B2C issuer validation if needed
-        if ((environment.azureAd as any).issuerValidation?.acceptedIssuers) {
-          console.log('[MSAL] B2C issuer validation configured');
-          console.log('[MSAL] Accepted issuers:', (environment.azureAd as any).issuerValidation.acceptedIssuers);
-        }
-      }).catch(error => {
-        console.error('Error initializing MSAL:', error);
-        
-        // B2C specific error handling
-        if (error.message?.includes('authority') || error.message?.includes('issuer')) {
-          console.error('[MSAL B2C] Authority/Issuer validation error - check B2C configuration');
-          console.error('[MSAL B2C] Current authority:', environment.azureAd.authority);
-          console.error('[MSAL B2C] validateAuthority setting:', (environment.azureAd as any).validateAuthority);
-        }
-      });
+      // MSAL instance created here - initialization will be handled by MsalInitService
+      // This prevents the "multiple instance" warning while ensuring proper initialization flow
+      if (environment.app.enableLogging) {
+        console.log('✅ PulsoVivo: MSAL initialized successfully');
+      }
       
       return msalInstance;
     } catch (error) {
@@ -124,7 +110,9 @@ export function MSALGuardConfigFactory(): MsalGuardConfiguration {
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string>>();
   protectedResourceMap.set('https://graph.microsoft.com/v1.0/me', environment.azureAd.scopes);
-  protectedResourceMap.set(`${environment.api.baseUrl}/*`, environment.api.bffScopes);
+  // Match both proxy requests (/api/*) and direct API calls to AWS
+  protectedResourceMap.set('/api/*', environment.api.bffScopes);
+  protectedResourceMap.set('https://erwqz80g2d.execute-api.us-east-1.amazonaws.com/*', environment.api.bffScopes);
 
   return {
     interactionType: InteractionType.Redirect,
@@ -137,7 +125,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }), 
     provideRouter(routes), 
     provideClientHydration(withEventReplay()),
-    provideHttpClient(withInterceptorsFromDi()),
+    provideHttpClient(withInterceptorsFromDi(), withFetch()),
     {
       provide: LOCALE_ID,
       useValue: 'es'

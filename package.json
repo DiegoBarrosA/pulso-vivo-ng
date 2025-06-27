@@ -3,11 +3,23 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "ng serve --proxy-config=proxy.conf.json",
+    "start:dev": "ng serve --configuration=development --host=0.0.0.0 --port=4200 --proxy-config=proxy.conf.json --open",
+    "start:local": "ng serve --configuration=development --port=4000 --proxy-config=proxy.conf.json --open",
+    "start:prod": "ng serve --configuration=production --port=4000 --proxy-config=proxy.conf.json",
+    "build": "ng build --configuration=production",
+    "build:dev": "ng build --configuration=development",
+    "build:prod": "ng build --configuration=production",
+    "build:ssr": "ng build --configuration=production --ssr",
+    "build:static": "ng build --configuration=static",
+    "build:docker": "ng build --configuration=docker",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:pulso-vivo-ng": "node dist/pulso-vivo-ng/server/server.mjs"
+    "serve:ssr:pulso-vivo-ng": "node dist/pulso-vivo-ng/server/server.mjs",
+    "dev": "./start-dev.sh",
+    "cache:clear": "ng cache clean",
+    "lint": "ng lint",
+    "analyze": "ng build --configuration=production --stats-json && npx webpack-bundle-analyzer dist/pulso-vivo-ng/stats.json"
   },
   "private": true,
   "dependencies": {

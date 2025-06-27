@@ -18,6 +18,9 @@ export class AuthService {
   
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  
+  // Prevent multiple concurrent login attempts
+  private loginInProgress = false;
 
   constructor(
     private msalService: MsalService,
@@ -32,6 +35,8 @@ export class AuthService {
     try {
       const initialized = await this.msalInitService.ensureInitialized();
       if (initialized) {
+        // Handle redirect first, then check auth status
+        await this.handleRedirectPromise();
         this.checkAuthenticationStatus();
       }
     } catch (error) {
@@ -47,9 +52,28 @@ export class AuthService {
       if (accounts && accounts.length > 0) {
         this.isAuthenticatedSubject.next(true);
         this.userSubject.next(accounts[0]);
+        this.loginInProgress = false; // Reset login in progress flag
+        
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] User authenticated successfully:', accounts[0].username);
+          console.log('[Auth Service] Account details:', {
+            username: accounts[0].username,
+            homeAccountId: accounts[0].homeAccountId,
+            tenantId: accounts[0].tenantId
+          });
+        }
+      } else {
+        this.isAuthenticatedSubject.next(false);
+        this.userSubject.next(null);
+        this.loginInProgress = false; // Reset login in progress flag
+        
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] No authenticated accounts found');
+        }
       }
     } catch (error) {
-      console.error('Error checking authentication status:', error);
+      console.error('[Auth Service] Error checking authentication status:', error);
+      this.loginInProgress = false; // Reset login in progress flag
     }
   }
 
@@ -59,6 +83,22 @@ export class AuthService {
   async login(): Promise<void> {
     if (!this.isBrowser) return;
     
+    // Prevent multiple concurrent login attempts
+    if (this.loginInProgress) {
+      if (environment.app.enableLogging) {
+        console.log('Login already in progress, skipping...');
+      }
+      return;
+    }
+    
+    // Check if user is already authenticated
+    if (this.isAuthenticated()) {
+      if (environment.app.enableLogging) {
+        console.log('User already authenticated, skipping login...');
+      }
+      return;
+    }
+    
     const initialized = await this.msalInitService.ensureInitialized();
     if (!initialized) {
       console.error('MSAL not initialized, cannot login');
@@ -66,14 +106,50 @@ export class AuthService {
     }
     
     try {
+      this.loginInProgress = true;
+      
       const loginRequest: RedirectRequest = {
         scopes: environment.azureAd.scopes,
         prompt: 'select_account'
       };
 
+      if (environment.app.enableLogging) {
+        console.log('[Auth Service] Starting login redirect...');
+      }
+      
       this.msalService.loginRedirect(loginRequest);
     } catch (error) {
-      console.error('Error during login:', error);
+      console.error('[Auth Service] Error during login:', error);
+      this.loginInProgress = false;
+    }
+  }
+
+  /**
+   * Handle redirect promise when returning from authentication
+   */
+  private async handleRedirectPromise(): Promise<void> {
+    try {
+      if (environment.app.enableLogging) {
+        console.log('[Auth Service] Handling redirect promise...');
+      }
+      
+      const response = await this.msalService.handleRedirectObservable().toPromise();
+      
+      if (response) {
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] Redirect handled successfully:', response.account?.username);
+        }
+        this.loginInProgress = false;
+        // Update authentication state
+        this.checkAuthenticationStatus();
+      } else {
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] No redirect response');
+        }
+      }
+    } catch (error) {
+      console.error('[Auth Service] Error handling redirect:', error);
+      this.loginInProgress = false;
     }
   }
 
@@ -142,20 +218,95 @@ export class AuthService {
     }
     
     try {
-      const account = this.msalService.instance.getAllAccounts()[0];
-      if (!account) {
+      const accounts = this.msalService.instance.getAllAccounts();
+      if (!accounts || accounts.length === 0) {
+        if (environment.app.enableLogging) {
+          console.warn('[Auth Service] No account found, cannot get BFF token');
+        }
         return null;
       }
 
+      const account = accounts[0];
+      if (environment.app.enableLogging) {
+        console.log('[Auth Service] Account found:', account.username);
+        console.log('[Auth Service] Requesting scopes:', environment.api.bffScopes);
+      }
+
+      // Try with configured BFF scopes first
+      let response = await this.tryGetTokenWithScopes(environment.api.bffScopes, account);
+      
+      // If that fails, try with basic scopes
+      if (!response?.accessToken) {
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] BFF scopes failed, trying basic scopes...');
+        }
+        response = await this.tryGetTokenWithScopes(['openid'], account);
+      }
+      
+      // If still no token, try with default Azure AD scopes
+      if (!response?.accessToken) {
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] Basic scopes failed, trying default scopes...');
+        }
+        response = await this.tryGetTokenWithScopes(environment.azureAd.scopes, account);
+      }
+      
+      // If still no access token, try to get the ID token as fallback
+      let finalToken = response?.accessToken;
+      if (!finalToken && account.idToken) {
+        if (environment.app.enableLogging) {
+          console.log('[Auth Service] No access token available, using ID token as fallback');
+        }
+        finalToken = account.idToken;
+      }
+      
+      if (environment.app.enableLogging) {
+        console.log('[Auth Service] Final token response:', {
+          hasAccessToken: !!response?.accessToken,
+          hasIdToken: !!response?.idToken,
+          usingIdTokenFallback: !response?.accessToken && !!account.idToken,
+          tokenLength: finalToken?.length || 0,
+          scopes: response?.scopes,
+          expiresOn: response?.expiresOn
+        });
+        
+        if (finalToken) {
+          console.log('[Auth Service] Token preview (first 50 chars):', finalToken.substring(0, 50) + '...');
+        }
+      }
+      
+      return finalToken || null;
+    } catch (error) {
+      if (environment.app.enableLogging) {
+        console.error('[Auth Service] Error acquiring token:', error);
+        console.error('[Auth Service] Error name:', error && typeof error === 'object' && 'name' in error ? error.name : 'Unknown');
+        console.error('[Auth Service] Error message:', error && typeof error === 'object' && 'message' in error ? error.message : 'No message');
+      }
+      
+      return null;
+    }
+  }
+
+  /**
+   * Helper method to try getting token with specific scopes
+   */
+  private async tryGetTokenWithScopes(scopes: string[], account: AccountInfo): Promise<AuthenticationResult | null> {
+    try {
       const silentRequest: SilentRequest = {
-        scopes: environment.api.bffScopes,
+        scopes: scopes,
         account: account
       };
 
+      if (environment.app.enableLogging) {
+        console.log('[Auth Service] Trying scopes:', scopes);
+      }
+
       const response = await this.msalService.acquireTokenSilent(silentRequest).toPromise();
-      return response?.accessToken || null;
+      return response || null;
     } catch (error) {
-      console.error('Error al obtener token del BFF:', error);
+      if (environment.app.enableLogging) {
+        console.warn('[Auth Service] Failed to get token with scopes:', scopes, error);
+      }
       return null;
     }
   }

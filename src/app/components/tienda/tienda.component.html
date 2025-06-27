@@ -122,13 +122,13 @@
               
               <!-- Badge de estado -->
               <div class="estado-badge">
-                <span class="badge bg-success" *ngIf="producto.enStock && producto.cantidadDisponible > 10">
+                <span class="badge bg-success" *ngIf="producto.enStock && (producto.cantidadDisponible || 0) > 10">
                   <i class="bi bi-check-circle"></i> Disponible
                 </span>
-                <span class="badge bg-warning" *ngIf="producto.enStock && producto.cantidadDisponible <= 10 && producto.cantidadDisponible > 0">
+                <span class="badge bg-warning" *ngIf="producto.enStock && (producto.cantidadDisponible || 0) <= 10 && (producto.cantidadDisponible || 0) > 0">
                   <i class="bi bi-exclamation-triangle"></i> Últimas unidades
                 </span>
-                <span class="badge bg-danger" *ngIf="!producto.enStock || producto.cantidadDisponible === 0">
+                <span class="badge bg-danger" *ngIf="!producto.enStock || (producto.cantidadDisponible || 0) === 0">
                   <i class="bi bi-x-circle"></i> Agotado
                 </span>
               </div>
@@ -155,11 +155,11 @@
                 <div class="acciones">
                   <button 
                     class="btn btn-primary me-2 flex-grow-1"
-                    [disabled]="!producto.enStock || producto.cantidadDisponible === 0"
+                    [disabled]="!producto.enStock || (producto.cantidadDisponible || 0) === 0"
                     (click)="agregarAlCarrito(producto)">
                     <i class="bi bi-cart-plus"></i>
-                    <span *ngIf="producto.enStock && producto.cantidadDisponible > 0">Agregar</span>
-                    <span *ngIf="!producto.enStock || producto.cantidadDisponible === 0">Agotado</span>
+                    <span *ngIf="producto.enStock && (producto.cantidadDisponible || 0) > 0">Agregar</span>
+                    <span *ngIf="!producto.enStock || (producto.cantidadDisponible || 0) === 0">Agotado</span>
                   </button>
                   
                   <button 

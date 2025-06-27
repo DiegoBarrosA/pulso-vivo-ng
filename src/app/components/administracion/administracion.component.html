@@ -218,7 +218,7 @@
                     </div>
                   </td>
                   <td>
-                    <span class="badge bg-secondary">{{ producto.category || producto.categoria }}</span>
+                    <span class="badge bg-secondary">{{ producto.category }}</span>
                   </td>
                   <td>
                     <span [class]="getClaseEstado(getEstadoStock(producto))">
@@ -233,7 +233,7 @@
                       {{ (producto.active || producto.activo) ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
-                  <td>{{ formatearFecha(producto.fechaActualizacion) }}</td>
+                  <td>{{ producto.fechaActualizacion ? formatearFecha(producto.fechaActualizacion) : 'N/A' }}</td>
                   <td>
                     <div class="btn-group btn-group-sm">
                       <button 
@@ -354,7 +354,7 @@
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Categoría *</label>
-              <input type="text" class="form-control" [(ngModel)]="formularioProducto.categoria" name="categoria" required>
+              <input type="text" class="form-control" [(ngModel)]="formularioProducto.category" name="category" required>
             </div>
             <div class="col-12 mb-3">
               <label class="form-label">Descripción</label>

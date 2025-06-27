@@ -1,7 +1,7 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { MsalService } from '@azure/msal-angular';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 
@@ -27,7 +27,7 @@ export class MsalInitService {
   }
 
   /**
-   * Inicializa MSAL de forma segura
+   * Inicializa MSAL de forma segura (sin reinitializar la instancia)
    */
   private async initialize(): Promise<void> {
     if (this.initializationPromise) {
@@ -40,15 +40,29 @@ export class MsalInitService {
 
   private async performInitialization(): Promise<void> {
     try {
-      if (environment.app.enableLogging) {
-        console.log('[MSAL Init] Inicializando MSAL...');
+      // Skip MSAL initialization during SSR
+      if (!this.isBrowser) {
+        if (environment.app.enableLogging) {
+          console.log('[MSAL Init] Skipping MSAL initialization during SSR');
+        }
+        this.isInitialized = true;
+        this.initializationSubject.next(false);
+        return;
       }
 
-      // Inicializar la instancia de MSAL
-      await this.msalService.instance.initialize();
-      
       if (environment.app.enableLogging) {
-        console.log('[MSAL Init] MSAL inicializado correctamente');
+        console.log('[MSAL Init] Verificando estado de MSAL...');
+      }
+
+      // Initialize MSAL instance first - required in MSAL v2+
+      if (environment.app.enableLogging) {
+        console.log('[MSAL Init] Initializing MSAL instance...');
+      }
+
+      await this.msalService.instance.initialize();
+
+      if (environment.app.enableLogging) {
+        console.log('[MSAL Init] MSAL instance initialized successfully');
       }
 
       // Manejar promesas de redirección
@@ -72,12 +86,12 @@ export class MsalInitService {
         console.log(`[MSAL Init] Cuentas encontradas: ${accounts.length}`);
         
         if (accounts.length > 0) {
-          console.log(`[MSAL Init] Usuario actual: ${accounts[0].username}`);
+          console.log(`[MSAL Init] Usuario actual: ${accounts[0].username || 'Sin nombre'}`);
         }
       }
 
     } catch (error) {
-      console.error('[MSAL Init] Error durante la inicialización:', error);
+      console.error('[MSAL Init] Error durante la verificación:', error);
       
       // Log detallado del error para debugging adicional
       this.logDetailedError(error);
@@ -126,7 +140,7 @@ export class MsalInitService {
   }
 
   /**
-   * Reinicia MSAL (útil para debugging)
+   * Reinicia el estado del servicio (útil para debugging)
    */
   async restart(): Promise<void> {
     if (!this.isBrowser) {
@@ -137,6 +151,7 @@ export class MsalInitService {
     this.initializationPromise = null;
     this.initializationSubject.next(false);
 
+    // No reinicializar MSAL, solo nuestro estado interno
     await this.initialize();
   }
 
@@ -169,16 +184,16 @@ export class MsalInitService {
         clientCapabilities: config.auth.clientCapabilities || [],
         knownAuthorities: config.auth.knownAuthorities || [],
         storeAuthStateInCookie: config.cache?.storeAuthStateInCookie,
-        currentUrl: window.location.href,
-        userAgent: navigator.userAgent
+        currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'SSR'
       };
     } catch (error) {
       return {
         platform: 'browser',
         initialized: this.isInitialized,
         error: error instanceof Error ? error.message : 'Unknown error',
-        currentUrl: window.location.href,
-        userAgent: navigator.userAgent
+        currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'SSR'
       };
     }
   }
