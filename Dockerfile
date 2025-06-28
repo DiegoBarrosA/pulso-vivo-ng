@@ -31,7 +31,7 @@ ENV ENABLE_LOGGING=$ENABLE_LOGGING
 RUN npm run build:docker
 
 # Production stage
-FROM nginx:alpine
+FROM docker.io/nginx:alpine
 
 # Copy built application from build stage
 COPY --from=build /app/dist/docker/browser /usr/share/nginx/html
