@@ -33,7 +33,7 @@ export const environment = {
   production: false,
   azureAd: {
     // Your B2C Application ID
-    clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81",
+    clientId: "e30e27b2-1240-4f61-a8bd-25aacc63ab36",
     
     // B2C Authority (replace placeholders)
     authority: "https://your-tenant-name.b2clogin.com/your-tenant-name.onmicrosoft.com/B2C_1_signupsignin",
@@ -100,7 +100,7 @@ Use this JavaScript in browser console to validate B2C config:
 ```javascript
 // B2C Configuration Validator
 const b2cConfig = {
-  clientId: "7549ac9c-9294-4bb3-98d6-752d12b13d81",
+  clientId: "e30e27b2-1240-4f61-a8bd-25aacc63ab36",
   authority: "https://your-tenant-name.b2clogin.com/your-tenant-name.onmicrosoft.com/B2C_1_signupsignin",
   tenantId: "82c6cf20-e689-4aa9-bedf-7acaf7c4ead7"
 };

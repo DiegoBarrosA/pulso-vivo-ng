@@ -57,7 +57,7 @@ docker run -d -p 80:80 --name pulso-vivo-production \
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `INVENTORY_SERVICE_URL` | Backend API URL | `http://localhost:8081/api` |
-| `AZURE_AD_CLIENT_ID` | B2C Client ID | `7549ac9c-9294-4bb3-98d6-752d12b13d81` |
+| `AZURE_AD_CLIENT_ID` | B2C Client ID | `e30e27b2-1240-4f61-a8bd-25aacc63ab36` |
 | `AZURE_AD_AUTHORITY` | B2C Authority URL | `https://PulsoVivo.b2clogin.com/...` |
 | `AZURE_AD_REDIRECT_URI` | Redirect URI | `http://localhost:4200` |
 | `ENABLE_LOGGING` | Enable debug logging | `false` |
